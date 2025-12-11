@@ -58,7 +58,8 @@ int main(int, char**)
         uint32_t opengl_num_extensions;
         const char** opengl_extensions;
 
-        ASSERT(OpenGL_GetAvailableExtensions(&opengl_extensions, &opengl_num_extensions) == TRUE);
+        bool32_t get_extensions_result = OpenGL_GetAvailableExtensions(&opengl_extensions, &opengl_num_extensions);
+        ASSERT(get_extensions_result == TRUE);
 
         fprintf(stderr, "OpenGL extensions:\n");
         for (uint32_t i = 0; i < opengl_num_extensions; ++i)

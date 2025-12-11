@@ -11,9 +11,9 @@
 #endif
 
 #if FPS_DEBUG_BUILD
-#	define ASSERT assert
+#	define ASSERT(...) assert(__VA_ARGS__)
 #else
-#	define ASSERT
+#	define ASSERT(...)
 #endif
 
 #define UNREACHABLE ASSERT(0)
