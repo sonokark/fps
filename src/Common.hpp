@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stdint.h>
 
+#define UNUSED(x) ((void)(x))
+
 #ifdef _DEBUG
 #	define FPS_DEBUG_BUILD 1
 #endif
@@ -13,6 +15,8 @@
 #else
 #	define ASSERT
 #endif
+
+#define UNREACHABLE ASSERT(0)
 
 typedef uint32_t bool32_t;
 

@@ -9,7 +9,7 @@ int main(int, char**)
 {
     if (!glfwInit())
     {
-        fprintf(stderr, "GLFW init failed.\n");
+        fprintf(stderr, "glfwInit failed.\n");
         return 1;
     }
 
@@ -34,8 +34,38 @@ int main(int, char**)
 
     glfwMakeContextCurrent(window);
 
-    bool32_t load_result = OpenGL_LoadFunctions();
+    bool32_t load_result = OpenGL_LoadFunctions(glfwGetProcAddress);
     ASSERT(load_result == TRUE);
+
+    GLint context_flags;
+    glGetIntegerv(GL_CONTEXT_FLAGS, &context_flags);
+    if (context_flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+    {
+        fprintf(stderr, "OpenGL debugging enabled.\n");
+
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
+        glDebugMessageCallback(OpenGL_Debug_WriteOutputToStderr, NULL);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+    }
+
+    // Query OpenGL version and extensions
+    {
+        const char* opengl_version = (const char*)glGetString(GL_VERSION);
+        fprintf(stderr, "OpenGL version: %s\n", opengl_version);
+
+        uint32_t opengl_num_extensions;
+        const char** opengl_extensions;
+
+        ASSERT(OpenGL_GetAvailableExtensions(&opengl_extensions, &opengl_num_extensions) == TRUE);
+
+        fprintf(stderr, "OpenGL extensions:\n");
+        for (uint32_t i = 0; i < opengl_num_extensions; ++i)
+        {
+            fprintf(stderr, " - %s\n", opengl_extensions[i]);
+        }
+    }
 
     glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
 
