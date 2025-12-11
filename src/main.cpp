@@ -2,6 +2,7 @@
 
 #include "Common.hpp"
 #include "OpenGL.hpp"
+#include "OpenGL_Shader.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -67,6 +68,25 @@ int main(int, char**)
             fprintf(stderr, " - %s\n", opengl_extensions[i]);
         }
     }
+
+    GLuint default_program;
+    {
+        GLuint shaders[2];
+
+        shaders[0] = OpenGL_Shader_CreateShader(GL_VERTEX_SHADER, OpenGL_Shader_DefaultVertexSource);
+        ASSERT(shaders[0] != 0);
+
+        shaders[1] = OpenGL_Shader_CreateShader(GL_FRAGMENT_SHADER, OpenGL_Shader_DefaultFragmentSource);
+        ASSERT(shaders[1] != 0);
+
+        default_program = OpenGL_Shader_CreateProgram(shaders, 2);
+        ASSERT(default_program != 0);
+
+        glDeleteShader(shaders[0]);
+        glDeleteShader(shaders[1]);
+    }
+
+    glUseProgram(default_program);
 
     glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
 

@@ -12,6 +12,22 @@ PFN_glEnable glEnable;
 PFN_glDebugMessageCallback glDebugMessageCallback;
 PFN_glDebugMessageControl glDebugMessageControl;
 
+PFN_glCreateShader glCreateShader;
+PFN_glShaderSource glShaderSource;
+PFN_glCompileShader glCompileShader;
+PFN_glGetShaderiv glGetShaderiv;
+PFN_glGetShaderInfoLog glGetShaderInfoLog;
+PFN_glDeleteShader glDeleteShader;
+
+PFN_glCreateProgram glCreateProgram;
+PFN_glAttachShader glAttachShader;
+PFN_glLinkProgram glLinkProgram;
+PFN_glDetachShader glDetachShader;
+PFN_glGetProgramiv glGetProgramiv;
+PFN_glGetProgramInfoLog glGetProgramInfoLog;
+PFN_glDeleteProgram glDeleteProgram;
+PFN_glUseProgram glUseProgram;
+
 PFN_glClearColor glClearColor;
 PFN_glClear glClear;
 
@@ -30,6 +46,22 @@ bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address)
 
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDebugMessageCallback);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDebugMessageControl);
+
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCreateShader);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glShaderSource);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCompileShader);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetShaderiv);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetShaderInfoLog);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDeleteShader);
+
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCreateProgram);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glAttachShader);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glLinkProgram);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDetachShader);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetProgramiv);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetProgramInfoLog);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDeleteProgram);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUseProgram);
 
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glClearColor);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glClear);

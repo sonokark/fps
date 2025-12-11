@@ -68,6 +68,12 @@ typedef void (APIENTRYP GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
 #define GL_DEBUG_OUTPUT 0x92E0
 #define GL_DEBUG_OUTPUT_SYNCHRONOUS 0x8242
 
+#define GL_FRAGMENT_SHADER 0x8B30
+#define GL_VERTEX_SHADER 0x8B31
+
+#define GL_COMPILE_STATUS 0x8B81
+#define GL_LINK_STATUS 0x8B82
+
 #define GL_COLOR_BUFFER_BIT 0x00004000
 
 typedef const GLubyte* (APIENTRYP PFN_glGetString)(GLenum name);
@@ -77,6 +83,22 @@ typedef void (APIENTRYP PFN_glEnable)(GLenum cap);
 
 typedef void (APIENTRYP PFN_glDebugMessageCallback)(GLDEBUGPROC callback, const void* userParam);
 typedef void (APIENTRYP PFN_glDebugMessageControl)(GLenum source, GLenum type, GLenum severity, GLsizei count, const GLuint* ids, GLboolean enabled);
+
+typedef GLuint (APIENTRYP PFN_glCreateShader)(GLenum type);
+typedef void (APIENTRYP PFN_glShaderSource)(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
+typedef void (APIENTRYP PFN_glCompileShader)(GLuint shader);
+typedef void (APIENTRYP PFN_glGetShaderiv)(GLuint shader, GLenum pname, GLint* params);
+typedef void (APIENTRYP PFN_glGetShaderInfoLog)(GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
+typedef void (APIENTRYP PFN_glDeleteShader)(GLuint shader);
+
+typedef GLuint (APIENTRYP PFN_glCreateProgram)(void);
+typedef void (APIENTRYP PFN_glAttachShader)(GLuint program, GLuint shader);
+typedef void (APIENTRYP PFN_glLinkProgram)(GLuint program);
+typedef void (APIENTRYP PFN_glDetachShader)(GLuint program, GLuint shader);
+typedef void (APIENTRYP PFN_glGetProgramiv)(GLuint program, GLenum pname, GLint* params);
+typedef void (APIENTRYP PFN_glGetProgramInfoLog)(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
+typedef void (APIENTRYP PFN_glDeleteProgram)(GLuint program);
+typedef void (APIENTRYP PFN_glUseProgram)(GLuint program);
 
 typedef void (APIENTRYP PFN_glClearColor)(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
 typedef void (APIENTRYP PFN_glClear)(GLbitfield mask);
@@ -88,6 +110,22 @@ extern PFN_glEnable glEnable;
 
 extern PFN_glDebugMessageCallback glDebugMessageCallback;
 extern PFN_glDebugMessageControl glDebugMessageControl;
+
+extern PFN_glCreateShader glCreateShader;
+extern PFN_glShaderSource glShaderSource;
+extern PFN_glCompileShader glCompileShader;
+extern PFN_glGetShaderiv glGetShaderiv;
+extern PFN_glGetShaderInfoLog glGetShaderInfoLog;
+extern PFN_glDeleteShader glDeleteShader;
+
+extern PFN_glCreateProgram glCreateProgram;
+extern PFN_glAttachShader glAttachShader;
+extern PFN_glLinkProgram glLinkProgram;
+extern PFN_glDetachShader glDetachShader;
+extern PFN_glGetProgramiv glGetProgramiv;
+extern PFN_glGetProgramInfoLog glGetProgramInfoLog;
+extern PFN_glDeleteProgram glDeleteProgram;
+extern PFN_glUseProgram glUseProgram;
 
 extern PFN_glClearColor glClearColor;
 extern PFN_glClear glClear;

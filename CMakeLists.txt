@@ -30,6 +30,8 @@ add_executable(
 	"src/Common.hpp"
 	"src/OpenGL.hpp"
 	"src/OpenGL.cpp"
+	"src/OpenGL_Shader.hpp"
+	"src/OpenGL_Shader.cpp"
 )
 
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)

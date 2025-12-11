@@ -6,6 +6,11 @@
 
 #define UNUSED(x) ((void)(x))
 
+#define ARRAY_SIZE_U32(array) ((uint32_t)(sizeof(array) / sizeof(*(array))))
+
+#define STR_(x) #x
+#define STR(x) STR_(x)
+
 #ifdef _DEBUG
 #	define FPS_DEBUG_BUILD 1
 #endif
