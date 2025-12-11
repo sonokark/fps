@@ -9,15 +9,21 @@ inline const char* const OpenGL_Shader_DefaultVertexSource = OPENGL_SHADER_GLSL_
 R"sh(
 
 layout (location = 0) in vec3 a_position;
-layout (location = 1) in vec2 a_uv;
+layout (location = 1) in vec4 a_color;
 layout (location = 2) in vec3 a_normal;
 
-out vec2 v_uv;
+layout (location = 0) uniform mat4 u_projection;
+layout (location = 1) uniform mat4 u_model;
+
+out vec3 v_normal;
+out vec4 v_color;
 
 void main()
 {
-	v_uv = a_uv;
-	gl_Position = vec4(a_position, 1.0);
+	v_color = a_color;
+	v_normal = (u_model * vec4(a_normal, 0.0)).xyz; // NOTE: This is technically not correct
+
+	gl_Position = u_projection * u_model * vec4(a_position, 1.0);
 }
 
 )sh";
@@ -25,19 +31,25 @@ void main()
 inline const char* const OpenGL_Shader_DefaultFragmentSource = OPENGL_SHADER_GLSL_VERSION_STR
 R"sh(
 
-in vec2 v_uv;
+in vec4 v_color;
+in vec3 v_normal;
 
 out vec4 o_color;
 
+const float light_bias = 0.2;
+const vec3 light_direction = vec3(0.0, 0.0, -1.0);
+
 void main()
 {
-	o_color = vec4(v_uv.x, v_uv.y, 0.0, 1.0);
+	float light_factor = max(0.0, -dot(v_normal, light_direction)) * (1 - light_bias) + light_bias;
+
+	o_color = light_factor * v_color;
 }
 
 )sh";
 
 GLuint OpenGL_Shader_CreateShader(GLenum type, const char* source);
 
-GLuint OpenGL_Shader_CreateProgram(const GLuint* shader, uint32_t num_shaders);
+GLuint OpenGL_Shader_CreateProgram(const GLuint* shaders, uint32_t num_shaders);
 
 #endif

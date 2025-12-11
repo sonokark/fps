@@ -20,6 +20,12 @@ typedef OpenGL_PFN_Proc(*OpenGL_PFN_GetProcAddress)(const char* name);
 #   define APIENTRYP APIENTRY *
 #endif
 
+#if defined(_WIN64)
+typedef long long GLsizeiptr;
+#else
+typedef long GLsizeiptr;
+#endif
+
 typedef char GLchar;
 typedef unsigned char GLboolean;
 typedef uint8_t GLubyte;
@@ -39,6 +45,9 @@ typedef void (APIENTRYP GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
 #define GL_VERSION 0x1F02
 #define GL_EXTENSIONS 0x1F03
 #define GL_NUM_EXTENSIONS 0x821D
+
+#define GL_UNSIGNED_INT 0x1405
+#define GL_FLOAT 0x1406
 
 #define GL_DEBUG_SOURCE_API 0x8246
 #define GL_DEBUG_SOURCE_WINDOW_SYSTEM 0x8247
@@ -67,6 +76,8 @@ typedef void (APIENTRYP GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
 
 #define GL_DEBUG_OUTPUT 0x92E0
 #define GL_DEBUG_OUTPUT_SYNCHRONOUS 0x8242
+#define GL_DEPTH_TEST 0x0B71
+#define GL_CULL_FACE 0x0B44
 
 #define GL_FRAGMENT_SHADER 0x8B30
 #define GL_VERTEX_SHADER 0x8B31
@@ -75,6 +86,21 @@ typedef void (APIENTRYP GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
 #define GL_LINK_STATUS 0x8B82
 
 #define GL_COLOR_BUFFER_BIT 0x00004000
+#define GL_DEPTH_BUFFER_BIT 0x00000100
+
+#define GL_ARRAY_BUFFER 0x8892
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+
+#define GL_STATIC_DRAW 0x88E4
+
+#define GL_WRITE_ONLY 0x88B9
+
+#define GL_TRIANGLES 0x0004
+
+#define GL_FRONT_AND_BACK 0x0408
+
+#define GL_LINE 0x1B01
+#define GL_FILL 0x1B02
 
 typedef const GLubyte* (APIENTRYP PFN_glGetString)(GLenum name);
 typedef const GLubyte* (APIENTRYP PFN_glGetStringi)(GLenum name, GLuint index);
@@ -100,8 +126,26 @@ typedef void (APIENTRYP PFN_glGetProgramInfoLog)(GLuint program, GLsizei bufSize
 typedef void (APIENTRYP PFN_glDeleteProgram)(GLuint program);
 typedef void (APIENTRYP PFN_glUseProgram)(GLuint program);
 
+typedef void (APIENTRYP PFN_glUniformMatrix4fv)(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
+
 typedef void (APIENTRYP PFN_glClearColor)(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
 typedef void (APIENTRYP PFN_glClear)(GLbitfield mask);
+
+typedef void (APIENTRYP PFN_glGenVertexArrays)(GLsizei n, GLuint* arrays);
+typedef void (APIENTRYP PFN_glBindVertexArray)(GLuint array);
+typedef void (APIENTRYP PFN_glEnableVertexAttribArray)(GLuint index);
+typedef void (APIENTRYP PFN_glVertexAttribPointer)(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void* pointer);
+
+typedef void (APIENTRYP PFN_glGenBuffers)(GLsizei n, GLuint* buffers);
+typedef void (APIENTRYP PFN_glBindBuffer)(GLenum target, GLuint buffer);
+typedef void (APIENTRYP PFN_glBufferStorage)(GLenum target, GLsizeiptr size, const void* data, GLbitfield flags);
+typedef void* (APIENTRYP PFN_glMapBuffer)(GLenum target, GLenum access);
+typedef GLboolean (APIENTRYP PFN_glUnmapBuffer)(GLenum target);
+typedef void (APIENTRYP PFN_glBufferData)(GLenum target, GLsizeiptr size, const void* data, GLenum usage);
+
+typedef void (APIENTRYP PFN_glDrawElements)(GLenum mode, GLsizei count, GLenum type, const void* indices);
+
+typedef void (APIENTRYP PFN_glPolygonMode)(GLenum face, GLenum mode);
 
 extern PFN_glGetString glGetString;
 extern PFN_glGetStringi glGetStringi;
@@ -127,14 +171,32 @@ extern PFN_glGetProgramInfoLog glGetProgramInfoLog;
 extern PFN_glDeleteProgram glDeleteProgram;
 extern PFN_glUseProgram glUseProgram;
 
+extern PFN_glUniformMatrix4fv glUniformMatrix4fv;
+
 extern PFN_glClearColor glClearColor;
 extern PFN_glClear glClear;
+
+extern PFN_glGenVertexArrays glGenVertexArrays;
+extern PFN_glBindVertexArray glBindVertexArray;
+extern PFN_glEnableVertexAttribArray glEnableVertexAttribArray;
+extern PFN_glVertexAttribPointer glVertexAttribPointer;
+
+extern PFN_glGenBuffers glGenBuffers;
+extern PFN_glBindBuffer glBindBuffer;
+extern PFN_glBufferStorage glBufferStorage;
+extern PFN_glMapBuffer glMapBuffer;
+extern PFN_glUnmapBuffer glUnmapBuffer;
+extern PFN_glBufferData glBufferData;
+
+extern PFN_glDrawElements glDrawElements;
+
+extern PFN_glPolygonMode glPolygonMode;
 
 bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address);
 
 bool32_t OpenGL_IsExtensionAvailable(const char* extension_name);
 
-bool32_t OpenGL_GetAvailableExtensions(const char*** out_availabe_extensions, uint32_t* out_num_extensions);
+bool32_t OpenGL_GetAvailableExtensions(const char**& out_availabe_extensions, uint32_t& out_num_extensions);
 
 const char* OpenGL_Debug_GetSourceString(GLenum source);
 

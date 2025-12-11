@@ -15,18 +15,18 @@ GLuint OpenGL_Shader_CreateShader(GLenum type, const char* source)
 	return shader;
 }
 
-GLuint OpenGL_Shader_CreateProgram(const GLuint* shader, uint32_t num_shaders)
+GLuint OpenGL_Shader_CreateProgram(const GLuint* shaders, uint32_t num_shaders)
 {
 	GLuint program = glCreateProgram();
 	ASSERT(program != 0);
 
 	for (uint32_t i = 0; i < num_shaders; ++i)
-		glAttachShader(program, shader[i]);
+		glAttachShader(program, shaders[i]);
 
 	glLinkProgram(program);
 	
 	for (uint32_t i = 0; i < num_shaders; ++i)
-		glDetachShader(program, shader[i]);
+		glDetachShader(program, shaders[i]);
 
 	GLint status;
 	glGetProgramiv(program, GL_LINK_STATUS, &status);

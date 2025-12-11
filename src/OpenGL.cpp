@@ -28,8 +28,26 @@ PFN_glGetProgramInfoLog glGetProgramInfoLog;
 PFN_glDeleteProgram glDeleteProgram;
 PFN_glUseProgram glUseProgram;
 
+PFN_glUniformMatrix4fv glUniformMatrix4fv;
+
 PFN_glClearColor glClearColor;
 PFN_glClear glClear;
+
+PFN_glGenVertexArrays glGenVertexArrays;
+PFN_glBindVertexArray glBindVertexArray;
+PFN_glEnableVertexAttribArray glEnableVertexAttribArray;
+PFN_glVertexAttribPointer glVertexAttribPointer;
+
+PFN_glGenBuffers glGenBuffers;
+PFN_glBindBuffer glBindBuffer;
+PFN_glBufferStorage glBufferStorage;
+PFN_glMapBuffer glMapBuffer;
+PFN_glUnmapBuffer glUnmapBuffer;
+PFN_glBufferData glBufferData;
+
+PFN_glDrawElements glDrawElements;
+
+PFN_glPolygonMode glPolygonMode;
 
 #define OPENGL_LOAD_FUNCTION(get_proc_address, name) \
 {                                                    \
@@ -63,8 +81,26 @@ bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address)
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDeleteProgram);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUseProgram);
 
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUniformMatrix4fv);
+
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glClearColor);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glClear);
+
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGenVertexArrays);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBindVertexArray);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glEnableVertexAttribArray);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexAttribPointer);
+
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGenBuffers);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBindBuffer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBufferStorage);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMapBuffer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUnmapBuffer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBufferData);
+
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDrawElements);
+
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glPolygonMode);
 
     return TRUE;
 }
@@ -121,7 +157,7 @@ bool32_t OpenGL_IsExtensionAvailable(const char* extension_name)
     return FALSE;
 }
 
-bool32_t OpenGL_GetAvailableExtensions(const char*** out_availabe_extensions, uint32_t* out_num_extensions)
+bool32_t OpenGL_GetAvailableExtensions(const char**& out_availabe_extensions, uint32_t& out_num_extensions)
 {
     ASSERT(out_availabe_extensions != NULL);
     ASSERT(out_num_extensions != NULL);
@@ -129,8 +165,8 @@ bool32_t OpenGL_GetAvailableExtensions(const char*** out_availabe_extensions, ui
     bool32_t populate_result = OpenGL_PopulateAvailableExtensionsIfNeeded();
     ASSERT(populate_result == TRUE);
 
-    *out_availabe_extensions = OpenGL_AvailableExtensions;
-    *out_num_extensions = OpenGL_NumAvailableExtensions;
+    out_availabe_extensions = OpenGL_AvailableExtensions;
+    out_num_extensions = OpenGL_NumAvailableExtensions;
     
     return TRUE;
 }
