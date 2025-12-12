@@ -28,7 +28,8 @@ static void Arena_CalculateAlignedStartAndNewOffset(
 	uint64_t  size,
 	uint64_t  alignment,
 	uint64_t& out_aligned_start,
-	uint64_t& out_new_offset)
+	uint64_t& out_new_offset
+)
 {
 	uint64_t start = (uint64_t)arena->memory + arena->offset;
 	uint64_t aligned_start = Arena_AlignForward(start, alignment);
