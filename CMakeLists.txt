@@ -32,6 +32,10 @@ add_executable(
 	"src/OpenGL.cpp"
 	"src/OpenGL_Shader.hpp"
 	"src/OpenGL_Shader.cpp"
+	"src/Arena.hpp"
+	"src/Arena.cpp"
+	"src/Geometry.hpp"
+    "src/Geometry.cpp"
 )
 
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)

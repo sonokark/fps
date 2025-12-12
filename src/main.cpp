@@ -1,11 +1,9 @@
 #include <stdio.h>
 
-#define _USE_MATH_DEFINES
-#include <math.h>
-
 #include "Common.hpp"
 #include "OpenGL.hpp"
 #include "OpenGL_Shader.hpp"
+#include "Geometry.hpp"
 
 #include <glm/common.hpp>
 #include <glm/vec2.hpp>
@@ -16,123 +14,14 @@
 
 #include <GLFW/glfw3.h>
 
-struct CVertex
+typedef struct DrawElementsIndirectCommand
 {
-    glm::vec3 position;
-    glm::vec4 color;
-    glm::vec3 normal;
+    GLuint count;
+    GLuint instance_count;
+    GLuint first_index;
+    GLint  base_vertex;
+    GLuint base_instance;
 };
-
-constexpr inline uint32_t GetBallNumVertices(uint32_t resolution)
-{
-    uint32_t num_planes = resolution - 1;
-
-    return num_planes * resolution + 2;
-}
-
-constexpr inline uint32_t GetBallNumIndices(uint32_t resolution)
-{
-    uint32_t num_middle_layers = resolution - 2;
-    uint32_t num_triangles = resolution * 2 + num_middle_layers * resolution * 2;
-
-    return num_triangles * 3;
-}
-
-static void GenerateColoredUnitBallTriangluarGeometry(
-    CVertex*         vertices,
-    uint32_t         max_num_vertices,
-    uint32_t*        indices,
-    uint32_t         max_num_indices,
-    uint32_t         resolution,
-    const glm::vec4& color
-)
-{
-    ASSERT(max_num_vertices >= GetBallNumVertices(resolution));
-    ASSERT(max_num_indices >= GetBallNumIndices(resolution));
-
-    // TODO: Use rotation matrices for updating the position vector
-
-    uint32_t vertex_index = 0;
-
-    const uint32_t top_vertex_index = vertex_index;
-    vertices[vertex_index++] = { { 0.0f,  1.0f, 0.0f }, color, { 0.0f,  1.0f, 0.0f } };
-    
-    const uint32_t bottom_vertex_index = vertex_index;
-    vertices[vertex_index++] = { { 0.0f, -1.0f, 0.0f }, color, { 0.0f, -1.0f, 0.0f } };
-
-    float delta_yaw = 2.0f * (float)M_PI / resolution;
-    float delta_pitch = -(float)M_PI / resolution;
-    
-    float current_pitch = (float)M_PI * 0.5f + delta_pitch;
-
-    glm::vec3 current_position;
-
-    for (uint32_t i = 0; i < resolution - 1; ++i)
-    {
-        current_position.y = sinf(current_pitch);
-        float current_pitch_cos = cosf(current_pitch);
-
-        float current_yaw = 0.0f;
-
-        for (uint32_t j = 0; j < resolution; ++j)
-        {
-            current_position.x = current_pitch_cos * cosf(current_yaw);
-            current_position.z = current_pitch_cos * sinf(current_yaw);
-
-            vertices[vertex_index++] = { current_position, color, current_position };
-
-            current_yaw += delta_yaw;
-        }
-
-        current_pitch += delta_pitch;
-    }
-
-    uint32_t index_index = 0;
-    
-    const uint32_t num_planes = resolution - 1;
-
-    for (uint32_t i = 0; i < resolution; ++i)
-    {
-        uint32_t current_vertex_index = 2 + i;
-        uint32_t next_vertex_index = 2 + (i + 1) % resolution;
-
-        indices[index_index++] = next_vertex_index;
-        indices[index_index++] = current_vertex_index;
-        indices[index_index++] = top_vertex_index;
-
-        current_vertex_index = 2 + (num_planes - 1) * resolution + i;
-        next_vertex_index = 2 + (num_planes - 1) * resolution + (i + 1) % resolution;
-
-        indices[index_index++] = current_vertex_index;
-        indices[index_index++] = next_vertex_index;
-        indices[index_index++] = bottom_vertex_index;
-    }
-
-    uint32_t upper_vertex_index_offset = 2;
-    uint32_t lower_vertex_index_offset = upper_vertex_index_offset + resolution;
-
-    for (uint32_t layer_index = 0; layer_index < num_planes; ++layer_index)
-    {
-        for (uint32_t i = 0; i < resolution; ++i)
-        {
-            uint32_t ur_vertex_index = upper_vertex_index_offset + i;
-            uint32_t ul_vertex_index = upper_vertex_index_offset + (i + 1) % resolution;
-            uint32_t lr_vertex_index = lower_vertex_index_offset + i;
-            uint32_t ll_vertex_index = lower_vertex_index_offset + (i + 1) % resolution;
-
-            indices[index_index++] = ul_vertex_index;
-            indices[index_index++] = ll_vertex_index;
-            indices[index_index++] = lr_vertex_index;
-            
-            indices[index_index++] = ul_vertex_index;
-            indices[index_index++] = lr_vertex_index;
-            indices[index_index++] = ur_vertex_index;
-        }
-
-        upper_vertex_index_offset = lower_vertex_index_offset;
-        lower_vertex_index_offset += resolution;
-    }
-}
 
 int main(int, char**)
 {
@@ -168,6 +57,14 @@ int main(int, char**)
 
     bool32_t load_result = OpenGL_LoadFunctions(glfwGetProcAddress);
     ASSERT(load_result == TRUE);
+
+    if (!OpenGL_IsExtensionAvailable("GL_ARB_shader_draw_parameters"))
+    {
+        fprintf(stderr, "Extension \"GL_ARB_shader_draw_parameters\" is not available.");
+
+        glfwTerminate();
+        return 1;
+    }
 
     GLint context_flags;
     glGetIntegerv(GL_CONTEXT_FLAGS, &context_flags);
@@ -219,50 +116,76 @@ int main(int, char**)
 
     glUseProgram(default_program);
 
-    uint32_t resolution = 16;
-    uint32_t num_vertices = GetBallNumVertices(resolution);
-    uint32_t num_indices = GetBallNumIndices(resolution);
-    
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    uint32_t ball_resolution = 16;
+
+    uint32_t ball_num_vertices = Geometry_Ball_GetNumRequiredVertices(ball_resolution);
+    uint32_t ball_num_indices = Geometry_Ball_GetNumRequiredIndices(ball_resolution);
+
+    uint32_t max_num_vertices = 1024 * 1024;
+    uint32_t max_num_indices = 1024 * 1024;
 
     GLuint vbo, ebo;
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
+    glCreateBuffers(1, &vbo);
+    glCreateBuffers(1, &ebo);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(CVertex) * num_vertices, NULL, GL_STATIC_DRAW);
+    glNamedBufferStorage(vbo, sizeof(CVertex) * max_num_vertices, NULL, GL_MAP_WRITE_BIT);
+    glNamedBufferStorage(ebo, sizeof(uint32_t) * max_num_indices, NULL, GL_MAP_WRITE_BIT);
 
-    CVertex* vertex_buffer_data = (CVertex*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+    CVertex* vertices = (CVertex*)glMapNamedBuffer(vbo, GL_WRITE_ONLY);
+    uint32_t* indices = (uint32_t*)glMapNamedBuffer(ebo, GL_WRITE_ONLY);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * num_indices, NULL, GL_STATIC_DRAW);
+    Geometry_Ball_GenerateColoredTriangularGeometry(vertices, max_num_vertices, indices, max_num_indices, ball_resolution, { 1.0f, 0.0f, 0.0f, 1.0f });
+    Geometry_Ball_GenerateColoredTriangularGeometry(vertices + ball_num_vertices, max_num_vertices - ball_num_vertices, indices + ball_num_indices, max_num_indices - ball_num_indices, ball_resolution, { 0.0f, 0.5f, 0.5f, 1.0f });
 
-    uint32_t* element_buffer_data = (uint32_t*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+    GLboolean vbo_unmap_result = glUnmapNamedBuffer(vbo);
+    ASSERT(vbo_unmap_result == GL_TRUE);
 
-    GenerateColoredUnitBallTriangluarGeometry(
-        vertex_buffer_data,
-        num_vertices,
-        element_buffer_data,
-        num_indices,
-        resolution,
-        { 0.0f, 0.5f, 0.5f, 1.0f }
+    GLboolean ebo_unmap_result = glUnmapNamedBuffer(ebo);
+    ASSERT(ebo_unmap_result == GL_TRUE);
+
+    GLuint vao;
+    glCreateVertexArrays(1, &vao);
+    glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(CVertex));
+    glVertexArrayElementBuffer(vao, ebo);
+
+    glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(CVertex, position));
+    glVertexArrayAttribFormat(vao, 1, 4, GL_FLOAT, GL_FALSE, offsetof(CVertex, color));
+    glVertexArrayAttribFormat(vao, 2, 3, GL_FLOAT, GL_FALSE, offsetof(CVertex, normal));
+
+    glEnableVertexArrayAttrib(vao, 0);
+    glEnableVertexArrayAttrib(vao, 1);
+    glEnableVertexArrayAttrib(vao, 2);
+
+    glVertexArrayAttribBinding(vao, 0, 0);
+    glVertexArrayAttribBinding(vao, 1, 0);
+    glVertexArrayAttribBinding(vao, 2, 0);
+    
+    uint32_t max_num_draw_commands = 1024;
+
+    GLuint draw_indirect_buffer_object;
+    glCreateBuffers(1, &draw_indirect_buffer_object);
+    glNamedBufferStorage(draw_indirect_buffer_object, sizeof(DrawElementsIndirectCommand) * max_num_draw_commands, NULL, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+
+    DrawElementsIndirectCommand* draw_commands = (DrawElementsIndirectCommand*)glMapNamedBufferRange(
+        draw_indirect_buffer_object,
+        0,
+        sizeof(DrawElementsIndirectCommand) * max_num_draw_commands,
+        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT
     );
 
-    GLboolean unmap_array_buffer_result = glUnmapBuffer(GL_ARRAY_BUFFER);
-    ASSERT(unmap_array_buffer_result == GL_TRUE);
+    draw_commands[0].count = ball_num_indices;
+    draw_commands[0].instance_count = 1;
+    draw_commands[0].first_index = 0;
+    draw_commands[0].base_vertex = 0;
+    draw_commands[0].base_instance = 0;
 
-    GLboolean unmap_element_buffer_result = glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
-    ASSERT(unmap_element_buffer_result == GL_TRUE);
+    draw_commands[1].count = ball_num_indices;
+    draw_commands[1].instance_count = 1;
+    draw_commands[1].first_index = ball_num_indices;
+    draw_commands[1].base_vertex = ball_num_vertices;
+    draw_commands[1].base_instance = 0;
 
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(CVertex), (const void*)offsetof(CVertex, position));
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(CVertex), (const void*)offsetof(CVertex, color));
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(CVertex), (const void*)offsetof(CVertex, normal));
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, draw_indirect_buffer_object);
 
     glm::mat4 identity(1.0f);
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)window_width / window_height, 0.1f, 100.0f);
@@ -285,8 +208,15 @@ int main(int, char**)
         glUniformMatrix4fv(1, 1, GL_FALSE, (float*)&model);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, (const void*)0);
+    
+        glBindVertexArray(vao);
+        glMultiDrawElementsIndirect(
+            GL_TRIANGLES,
+            GL_UNSIGNED_INT,
+            (const void*)0,
+            2,
+            sizeof(DrawElementsIndirectCommand)
+        );
 
         glfwSwapBuffers(window);
         glfwPollEvents();

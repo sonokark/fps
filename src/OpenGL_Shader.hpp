@@ -5,7 +5,9 @@
 
 #define OPENGL_SHADER_GLSL_VERSION_STR "#version " STR(OPENGL_VERSION_MAJOR) STR(OPENGL_VERSION_MINOR) "0 core\n"
 
-inline const char* const OpenGL_Shader_DefaultVertexSource = OPENGL_SHADER_GLSL_VERSION_STR
+#define OPENGL_SHADER_GLSL_EXTENSIONS_STR "#extension GL_ARB_shader_draw_parameters : require\n"
+
+inline const char* const OpenGL_Shader_DefaultVertexSource = OPENGL_SHADER_GLSL_VERSION_STR OPENGL_SHADER_GLSL_EXTENSIONS_STR
 R"sh(
 
 layout (location = 0) in vec3 a_position;
@@ -23,12 +25,12 @@ void main()
 	v_color = a_color;
 	v_normal = (u_model * vec4(a_normal, 0.0)).xyz; // NOTE: This is technically not correct
 
-	gl_Position = u_projection * u_model * vec4(a_position, 1.0);
+	gl_Position = u_projection * u_model * vec4(a_position + vec3(float(gl_DrawIDARB), 0.0, 0.0), 1.0);
 }
 
 )sh";
 
-inline const char* const OpenGL_Shader_DefaultFragmentSource = OPENGL_SHADER_GLSL_VERSION_STR
+inline const char* const OpenGL_Shader_DefaultFragmentSource = OPENGL_SHADER_GLSL_VERSION_STR OPENGL_SHADER_GLSL_EXTENSIONS_STR
 R"sh(
 
 in vec4 v_color;

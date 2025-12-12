@@ -8,17 +8,14 @@ PFN_glGetString glGetString;
 PFN_glGetStringi glGetStringi;
 PFN_glGetIntegerv glGetIntegerv;
 PFN_glEnable glEnable;
-
 PFN_glDebugMessageCallback glDebugMessageCallback;
 PFN_glDebugMessageControl glDebugMessageControl;
-
 PFN_glCreateShader glCreateShader;
 PFN_glShaderSource glShaderSource;
 PFN_glCompileShader glCompileShader;
 PFN_glGetShaderiv glGetShaderiv;
 PFN_glGetShaderInfoLog glGetShaderInfoLog;
 PFN_glDeleteShader glDeleteShader;
-
 PFN_glCreateProgram glCreateProgram;
 PFN_glAttachShader glAttachShader;
 PFN_glLinkProgram glLinkProgram;
@@ -27,27 +24,36 @@ PFN_glGetProgramiv glGetProgramiv;
 PFN_glGetProgramInfoLog glGetProgramInfoLog;
 PFN_glDeleteProgram glDeleteProgram;
 PFN_glUseProgram glUseProgram;
-
 PFN_glUniformMatrix4fv glUniformMatrix4fv;
-
 PFN_glClearColor glClearColor;
 PFN_glClear glClear;
-
 PFN_glGenVertexArrays glGenVertexArrays;
 PFN_glBindVertexArray glBindVertexArray;
 PFN_glEnableVertexAttribArray glEnableVertexAttribArray;
 PFN_glVertexAttribPointer glVertexAttribPointer;
-
 PFN_glGenBuffers glGenBuffers;
 PFN_glBindBuffer glBindBuffer;
 PFN_glBufferStorage glBufferStorage;
 PFN_glMapBuffer glMapBuffer;
 PFN_glUnmapBuffer glUnmapBuffer;
 PFN_glBufferData glBufferData;
-
+PFN_glMapBufferRange glMapBufferRange;
+PFN_glFlushMappedBufferRange glFlushMappedBufferRange;
 PFN_glDrawElements glDrawElements;
-
 PFN_glPolygonMode glPolygonMode;
+PFN_glCreateVertexArrays glCreateVertexArrays;
+PFN_glVertexArrayVertexBuffer glVertexArrayVertexBuffer;
+PFN_glVertexArrayElementBuffer glVertexArrayElementBuffer;
+PFN_glVertexArrayAttribFormat glVertexArrayAttribFormat;
+PFN_glEnableVertexArrayAttrib glEnableVertexArrayAttrib;
+PFN_glVertexArrayAttribBinding glVertexArrayAttribBinding;
+PFN_glCreateBuffers glCreateBuffers;
+PFN_glNamedBufferStorage glNamedBufferStorage;
+PFN_glMapNamedBufferRange glMapNamedBufferRange;
+PFN_glFlushMappedNamedBufferRange glFlushMappedNamedBufferRange;
+PFN_glMultiDrawElementsIndirect glMultiDrawElementsIndirect;
+PFN_glMapNamedBuffer glMapNamedBuffer;
+PFN_glUnmapNamedBuffer glUnmapNamedBuffer;
 
 #define OPENGL_LOAD_FUNCTION(get_proc_address, name) \
 {                                                    \
@@ -61,17 +67,14 @@ bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address)
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetStringi);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetIntegerv);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glEnable);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDebugMessageCallback);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDebugMessageControl);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCreateShader);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glShaderSource);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCompileShader);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetShaderiv);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetShaderInfoLog);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDeleteShader);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCreateProgram);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glAttachShader);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glLinkProgram);
@@ -80,27 +83,36 @@ bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address)
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetProgramInfoLog);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDeleteProgram);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUseProgram);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUniformMatrix4fv);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glClearColor);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glClear);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGenVertexArrays);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBindVertexArray);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glEnableVertexAttribArray);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexAttribPointer);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGenBuffers);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBindBuffer);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBufferStorage);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMapBuffer);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUnmapBuffer);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBufferData);
-
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMapBufferRange);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glFlushMappedBufferRange);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDrawElements);
-
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glPolygonMode);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCreateVertexArrays);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexArrayVertexBuffer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexArrayElementBuffer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexArrayAttribFormat);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glEnableVertexArrayAttrib);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexArrayAttribBinding);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glCreateBuffers);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glNamedBufferStorage);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMapNamedBufferRange);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glFlushMappedNamedBufferRange);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMultiDrawElementsIndirect);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMapNamedBuffer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUnmapNamedBuffer);
 
     return TRUE;
 }
