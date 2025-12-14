@@ -10,22 +10,35 @@
 inline const char* const OpenGL_Shader_DefaultVertexSource = OPENGL_SHADER_GLSL_VERSION_STR OPENGL_SHADER_GLSL_EXTENSIONS_STR
 R"sh(
 
-layout (location = 0) in vec3 a_position;
-layout (location = 1) in vec4 a_color;
-layout (location = 2) in vec3 a_normal;
+layout (location = 0) in vec3  a_position;
+layout (location = 1) in vec3  a_normal;
+layout (location = 2) in vec4  a_color;
+layout (location = 3) in uvec3 a_cell_ids;
 
 layout (location = 0) uniform mat4 u_projection;
-layout (location = 1) uniform mat4 u_model;
+layout (location = 1) uniform mat4 u_view;
+layout (location = 2) uniform mat4 u_model;
+
+layout (location = 3) uniform uint u_selected_face_id;
 
 out vec3 v_normal;
 out vec4 v_color;
 
 void main()
 {
-	v_color = a_color;
-	v_normal = (u_model * vec4(a_normal, 0.0)).xyz; // NOTE: This is technically not correct
+	vec4 tint = vec4(1.0, 1.0, 1.0, 1.0);
+	if ((u_selected_face_id == 6969) || (u_selected_face_id == a_cell_ids.z))
+	{
+		v_color = tint;
+	}
+	else
+	{
+		v_color = a_color;
+	}
 
-	gl_Position = u_projection * u_model * vec4(a_position + vec3(float(gl_DrawIDARB), 0.0, 0.0), 1.0);
+	v_normal = (u_model * vec4(a_normal.xyz, 0.0)).xyz; // NOTE: This is technically not correct
+
+	gl_Position = u_projection * u_view * u_model * vec4(a_position.xyz + vec3(float(gl_DrawIDARB), 0.0, 0.0), 1.0);
 }
 
 )sh";
@@ -44,7 +57,6 @@ const vec3 light_direction = vec3(0.0, 0.0, -1.0);
 void main()
 {
 	float light_factor = max(0.0, -dot(v_normal, light_direction)) * (1 - light_bias) + light_bias;
-
 	o_color = light_factor * v_color;
 }
 

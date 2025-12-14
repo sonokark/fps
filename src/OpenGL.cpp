@@ -54,6 +54,10 @@ PFN_glFlushMappedNamedBufferRange glFlushMappedNamedBufferRange;
 PFN_glMultiDrawElementsIndirect glMultiDrawElementsIndirect;
 PFN_glMapNamedBuffer glMapNamedBuffer;
 PFN_glUnmapNamedBuffer glUnmapNamedBuffer;
+PFN_glVertexArrayAttribIFormat glVertexArrayAttribIFormat;
+PFN_glUniform1ui glUniform1ui;
+PFN_glGetAttribLocation glGetAttribLocation;
+PFN_glVertexAttribIPointer glVertexAttribIPointer;
 
 #define OPENGL_LOAD_FUNCTION(get_proc_address, name) \
 {                                                    \
@@ -113,6 +117,10 @@ bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address)
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMultiDrawElementsIndirect);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glMapNamedBuffer);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUnmapNamedBuffer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexArrayAttribIFormat);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUniform1ui);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetAttribLocation);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexAttribIPointer);
 
     return TRUE;
 }

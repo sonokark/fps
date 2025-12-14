@@ -91,6 +91,7 @@ typedef void (APIENTRYP GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
 #define GL_LINE 0x1B01
 #define GL_FILL 0x1B02
 #define GL_DRAW_INDIRECT_BUFFER 0x8F3F
+#define GL_INT 0x1404
 
 typedef const GLubyte* (APIENTRYP PFN_glGetString)(GLenum name);
 typedef const GLubyte* (APIENTRYP PFN_glGetStringi)(GLenum name, GLuint index);
@@ -142,6 +143,10 @@ typedef void (APIENTRYP PFN_glFlushMappedNamedBufferRange)(GLuint buffer, GLintp
 typedef void (APIENTRYP PFN_glMultiDrawElementsIndirect)(GLenum mode, GLenum type, const void* indirect, GLsizei drawcount, GLsizei stride);
 typedef void* (APIENTRYP PFN_glMapNamedBuffer)(GLuint buffer, GLenum access);
 typedef GLboolean(APIENTRYP PFN_glUnmapNamedBuffer)(GLuint buffer);
+typedef void (APIENTRYP PFN_glVertexArrayAttribIFormat)(GLuint vaobj, GLuint attribindex, GLint size, GLenum type, GLuint relativeoffset);
+typedef void (APIENTRYP PFN_glUniform1ui)(GLint location, GLuint v0);
+typedef GLint(APIENTRYP PFN_glGetAttribLocation)(GLuint program, const GLchar* name);
+typedef void (APIENTRYP PFN_glVertexAttribIPointer)(GLuint index, GLint size, GLenum type, GLsizei stride, const void* pointer);
 
 extern PFN_glGetString glGetString;
 extern PFN_glGetStringi glGetStringi;
@@ -193,6 +198,10 @@ extern PFN_glFlushMappedNamedBufferRange glFlushMappedNamedBufferRange;
 extern PFN_glMultiDrawElementsIndirect glMultiDrawElementsIndirect;
 extern PFN_glMapNamedBuffer glMapNamedBuffer;
 extern PFN_glUnmapNamedBuffer glUnmapNamedBuffer;
+extern PFN_glVertexArrayAttribIFormat glVertexArrayAttribIFormat;
+extern PFN_glUniform1ui glUniform1ui;
+extern PFN_glGetAttribLocation glGetAttribLocation;
+extern PFN_glVertexAttribIPointer glVertexAttribIPointer;
 
 bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address);
 
