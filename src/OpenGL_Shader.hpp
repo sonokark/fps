@@ -26,10 +26,14 @@ out vec4 v_color;
 
 void main()
 {
-	vec4 tint = vec4(1.0, 1.0, 1.0, 1.0);
-	if ((u_selected_face_id == 6969) || (u_selected_face_id == a_cell_ids.z))
+	uint vertex_id = a_cell_ids.x;
+	uint face_id = a_cell_ids.z;
+
+	vec4 pick_color = vec4(0.0, 0.7, 0.7, 1.0);
+
+	if (u_selected_face_id == face_id)
 	{
-		v_color = tint;
+		v_color = pick_color;
 	}
 	else
 	{

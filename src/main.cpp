@@ -24,7 +24,7 @@
 
 #define SCENE_ID_NONE ((uint32_t)-1)
 
-struct LVertex
+struct SVertex
 {
     glm::vec3  position;
     glm::vec3  normal;
@@ -66,7 +66,6 @@ struct Scene_Face
     uint32_t id;
 
     glm::vec4 color;
-
     glm::vec3 normal;
     float offset;
 
@@ -93,10 +92,10 @@ Scene_Vertex* Scene_AddVertex(Scene* scene, glm::vec3 position)
     uint32_t vertex_index = scene->num_vertices;
 
     Scene_Vertex* vertex = scene->vertices + vertex_index;
-    vertex->id = vertex_index;
-    vertex->position = position;
+    vertex->id                      = vertex_index;
+    vertex->position                = position;
     vertex->num_outgoing_half_edges = 0;
-    vertex->num_ingoing_half_edges = 0;
+    vertex->num_ingoing_half_edges  = 0;
 
     ++scene->num_vertices;
     return vertex;
@@ -115,8 +114,8 @@ Scene_Face* Scene_ConstructFace(Scene* scene, Scene_Vertex** vertices, uint32_t 
     uint32_t half_edge_index_base = scene->num_half_edges;
 
     Scene_Vertex* start_vertex = vertices[0];
-    Scene_Vertex* next_vertex = vertices[1];
-    Scene_Vertex* prev_vertex = vertices[num_vertices - 1];
+    Scene_Vertex* next_vertex  = vertices[1];
+    Scene_Vertex* prev_vertex  = vertices[num_vertices - 1];
 
     glm::vec3 face_normal = glm::normalize(
         glm::cross(
@@ -176,7 +175,7 @@ Scene_Face* Scene_ConstructFace(Scene* scene, Scene_Vertex** vertices, uint32_t 
 
 bool32_t Scene_GenerateGeometry(
     const Scene* scene,
-    LVertex*     vertices,
+    SVertex*     vertices,
     uint32_t     max_num_vertices,
     uint32_t*    indices,
     uint32_t     max_num_indices,
@@ -202,7 +201,7 @@ bool32_t Scene_GenerateGeometry(
         {
             ASSERT(vertex_index < max_num_vertices);
 
-            LVertex* geometry_vertex = vertices + vertex_index;
+            SVertex* geometry_vertex = vertices + vertex_index;
             geometry_vertex->position   = current_vertex->position;
             geometry_vertex->normal     = current_face->normal;
             geometry_vertex->color      = current_face->color;
@@ -368,6 +367,7 @@ void Camera_RecomputeViewMatrix(Camera* camera)
     camera->view = glm::lookAt(camera->position, camera->position + camera->forward, camera->up);
 }
 
+#if 0
 struct DrawElementsIndirectCommand
 {
     GLuint count;
@@ -376,6 +376,7 @@ struct DrawElementsIndirectCommand
     GLint  base_vertex;
     GLuint base_instance;
 };
+#endif
 
 static bool32_t Input_Cursor_Locked = TRUE;
 
@@ -395,7 +396,7 @@ static void Input_KeyCallback(GLFWwindow* window, int key, int scancode, int act
         switch (key)
         {
         case GLFW_KEY_W: Input_Key_Pressed_W = (action == GLFW_PRESS); break;
-        case GLFW_KEY_A: Input_Key_Pressed_A= (action == GLFW_PRESS); break;
+        case GLFW_KEY_A: Input_Key_Pressed_A = (action == GLFW_PRESS); break;
         case GLFW_KEY_S: Input_Key_Pressed_S = (action == GLFW_PRESS); break;
         case GLFW_KEY_D: Input_Key_Pressed_D = (action == GLFW_PRESS); break;
         }
@@ -415,26 +416,20 @@ static void Input_MouseMotionCallback(GLFWwindow* window, double xpos, double yp
     float x = (float)xpos;
     float y = (float)ypos;
 
-    Input_MouseMotion_LastX = x;
-    Input_MouseMotion_LastY = y;
-
-    static float last_x;
-    static float last_y;
-
     if (Input_MouseMotion_FirstMotion)
     {
-        last_x = x;
-        last_y = y;
-        
+        Input_MouseMotion_LastX = x;
+        Input_MouseMotion_LastY = y;
+
         Input_MouseMotion_FirstMotion = FALSE;
         return;
     }
 
-    Input_MouseMotion_DeltaX = x - last_x;
-    Input_MouseMotion_DeltaY = y - last_y;
+    Input_MouseMotion_DeltaX = x - Input_MouseMotion_LastX;
+    Input_MouseMotion_DeltaY = y - Input_MouseMotion_LastY;
 
-    last_x = x;
-    last_y = y;
+    Input_MouseMotion_LastX = x;
+    Input_MouseMotion_LastY = y;
 }
 
 static void Input_MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -592,7 +587,7 @@ int main(int, char**)
     glCreateBuffers(1, &vbo);
     glCreateBuffers(1, &ebo);
 
-    glNamedBufferStorage(vbo, sizeof(LVertex) * max_num_vertices, NULL, GL_MAP_WRITE_BIT);
+    glNamedBufferStorage(vbo, sizeof(SVertex) * max_num_vertices, NULL, GL_MAP_WRITE_BIT);
     glNamedBufferStorage(ebo, sizeof(uint32_t) * max_num_indices, NULL, GL_MAP_WRITE_BIT);
 
 #if 0
@@ -626,10 +621,10 @@ int main(int, char**)
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(LVertex), (const void*)offsetof(LVertex, position));
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(LVertex), (const void*)offsetof(LVertex, normal));
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(LVertex), (const void*)offsetof(LVertex, color));
-    glVertexAttribIPointer(3, 3, GL_UNSIGNED_INT, sizeof(LVertex), (const void*)offsetof(LVertex, cell_ids));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, position));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, normal));
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, color));
+    glVertexAttribIPointer(3, 3, GL_UNSIGNED_INT, sizeof(SVertex), (const void*)offsetof(SVertex, cell_ids));
     
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -755,7 +750,7 @@ int main(int, char**)
 
         // Regenerate the scene geometry
 
-        LVertex* vertices = (LVertex*)glMapNamedBuffer(vbo, GL_WRITE_ONLY);
+        SVertex* vertices = (SVertex*)glMapNamedBuffer(vbo, GL_WRITE_ONLY);
         uint32_t* indices = (uint32_t*)glMapNamedBuffer(ebo, GL_WRITE_ONLY);
 
         uint32_t num_vertices, num_indices;
