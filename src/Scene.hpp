@@ -93,12 +93,11 @@ bool32_t Scene_RayCast_FindNearestIntersectingFace(
 );
 
 // NOTE: ray_direction must be a unit vector
-bool32_t Scene_RayCast_FindNearestVertex(
-    Scene*         scene,
-    glm::vec3      ray_origin,
-    glm::vec3      ray_direction,
-    float          max_distance,
-    Scene_Vertex** out_nearest_vertex
+Scene_Vertex* Scene_RayCast_FindNearestVertex(
+    Scene*    scene,
+    glm::vec3 ray_origin,
+    glm::vec3 ray_direction,
+    float     max_distance
 );
 
 #endif // !SCENE_HPP_

@@ -36,7 +36,7 @@ struct Geometry_NumVerticesAndIndices
 
 constexpr inline Geometry_NumVerticesAndIndices Geometry_Ball_GetNumRequiredVerticesAndIndices(uint32_t resolution);
 
-bool32_t Geometry_Ball_GenerateColoredTriangularGeometry(
+bool32_t Geometry_Ball_Push(
     CVertex*  vertices,
     uint32_t  max_num_vertices,
     uint32_t* indices,

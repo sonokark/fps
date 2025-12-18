@@ -225,12 +225,11 @@ bool32_t Scene_RayCast_FindNearestIntersectingFace(
     return TRUE;
 }
 
-bool32_t Scene_RayCast_FindNearestVertex(
-    Scene*         scene,
-    glm::vec3      ray_origin,
-    glm::vec3      ray_direction,
-    float          max_distance,
-    Scene_Vertex** out_nearest_vertex
+Scene_Vertex* Scene_RayCast_FindNearestVertex(
+    Scene*    scene,
+    glm::vec3 ray_origin,
+    glm::vec3 ray_direction,
+    float     max_distance
 )
 {
     const float max_distance_squared = max_distance * max_distance;
@@ -258,9 +257,5 @@ bool32_t Scene_RayCast_FindNearestVertex(
         }
     }
 
-    if (!nearest_vertex)
-        return FALSE;
-
-    *out_nearest_vertex = nearest_vertex;
-    return TRUE;
+    return nearest_vertex;
 }

@@ -3,7 +3,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-bool32_t Geometry_Ball_GenerateColoredTriangularGeometry(
+bool32_t Geometry_Ball_Push(
     CVertex*  vertices,
     uint32_t  max_num_vertices,
     uint32_t* indices,

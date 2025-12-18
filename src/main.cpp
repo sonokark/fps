@@ -523,7 +523,8 @@ int main(int, char**)
     }
 
     GLuint program_scene = OpenGL_Shader_CreateProgramFromSources(OpenGL_Shader_Scene_VertexSource, OpenGL_Shader_Scene_FragmentSource);
-    
+    ASSERT(program_scene != 0);
+
     GLuint program_editor_geometry;
     GLuint program_editor_point;
     {
@@ -677,8 +678,8 @@ int main(int, char**)
                     } while (current_vertex != start_vertex);
                 }
 
-                Scene_Vertex* hit_vertex;
-                if (Scene_RayCast_FindNearestVertex(&scene, camera.position, pick_direction, 100.0f, &hit_vertex))
+                Scene_Vertex* hit_vertex = Scene_RayCast_FindNearestVertex(&scene, camera.position, pick_direction, 100.0f);
+                if (hit_vertex)
                 {
                     picked_vertex_id = hit_vertex->id;
 
