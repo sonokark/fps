@@ -1,9 +1,7 @@
 #ifndef CAMERA_HPP_
 #define CAMERA_HPP_
 
-#include <glm/common.hpp>
-#include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
+#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 struct Camera
@@ -20,6 +18,7 @@ struct Camera
 };
 
 inline void Camera_MoveStraight(Camera* camera, float distance);
+inline void Camera_MoveVertically(Camera* camera, float distance);
 inline void Camera_Strafe(Camera* camera, float distance);
 inline void Camera_Rotate(Camera* camera, float delta_yaw, float delta_pitch);
 
@@ -31,6 +30,11 @@ inline void Camera_RecomputeViewMatrix(Camera* camera);
 inline void Camera_MoveStraight(Camera* camera, float distance)
 {
     camera->position += distance * camera->forward;
+}
+
+inline void Camera_MoveVertically(Camera* camera, float distance)
+{
+    camera->position.y += distance;
 }
 
 inline void Camera_Strafe(Camera* camera, float distance)

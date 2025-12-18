@@ -4,9 +4,7 @@
 #include "Common.hpp"
 #include "Geometry.hpp"
 
-#include <glm/common.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
+#include <glm/glm.hpp>
 
 #define SCENE_MAX_NUM_VERTICES 512
 #define SCENE_MAX_NUM_HALF_EDGES 512
@@ -92,6 +90,15 @@ bool32_t Scene_RayCast_FindNearestIntersectingFace(
     float        ray_max_length,
     Scene_Face** out_intersecting_face,
     glm::vec3*   out_intersection
+);
+
+// NOTE: ray_direction must be a unit vector
+bool32_t Scene_RayCast_FindNearestVertex(
+    Scene*         scene,
+    glm::vec3      ray_origin,
+    glm::vec3      ray_direction,
+    float          max_distance,
+    Scene_Vertex** out_nearest_vertex
 );
 
 #endif // !SCENE_HPP_

@@ -9,13 +9,6 @@
 #include "Scene.hpp"
 #include "Camera.hpp"
 
-#include <glm/common.hpp>
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <GLFW/glfw3.h>
 
 #define EDITOR_GEOMETRY_PERMANENT_MAX_NUM_VERTICES 1024
@@ -374,6 +367,8 @@ static bool32_t Input_Key_Pressed_W;
 static bool32_t Input_Key_Pressed_A;
 static bool32_t Input_Key_Pressed_S;
 static bool32_t Input_Key_Pressed_D;
+static bool32_t Input_Key_Pressed_Space;
+static bool32_t Input_Key_Pressed_Shift;
 
 static void Input_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -385,10 +380,16 @@ static void Input_KeyCallback(GLFWwindow* window, int key, int scancode, int act
     {
         switch (key)
         {
-        case GLFW_KEY_W: Input_Key_Pressed_W = (action == GLFW_PRESS); break;
-        case GLFW_KEY_A: Input_Key_Pressed_A = (action == GLFW_PRESS); break;
-        case GLFW_KEY_S: Input_Key_Pressed_S = (action == GLFW_PRESS); break;
-        case GLFW_KEY_D: Input_Key_Pressed_D = (action == GLFW_PRESS); break;
+        case GLFW_KEY_W:     Input_Key_Pressed_W     = (action == GLFW_PRESS); break;
+        case GLFW_KEY_A:     Input_Key_Pressed_A     = (action == GLFW_PRESS); break;
+        case GLFW_KEY_S:     Input_Key_Pressed_S     = (action == GLFW_PRESS); break;
+        case GLFW_KEY_D:     Input_Key_Pressed_D     = (action == GLFW_PRESS); break;
+        case GLFW_KEY_SPACE: Input_Key_Pressed_Space = (action == GLFW_PRESS); break;
+
+        case GLFW_KEY_RIGHT_SHIFT:
+        case GLFW_KEY_LEFT_SHIFT:
+            Input_Key_Pressed_Shift = (action == GLFW_PRESS);
+            break;
         }
     }
 }
@@ -618,6 +619,7 @@ int main(int, char**)
         float current_time = (float)glfwGetTime();
 
         uint32_t picked_face_id = SCENE_ID_NONE;
+        uint32_t picked_vertex_id = SCENE_ID_NONE;
 
         if (last_time != 0.0f)
         {
@@ -629,6 +631,8 @@ int main(int, char**)
                 if (Input_Key_Pressed_S) Camera_MoveStraight(&camera, -5.0f * delta_time);
                 if (Input_Key_Pressed_D) Camera_Strafe(&camera, 5.0f * delta_time);
                 if (Input_Key_Pressed_A) Camera_Strafe(&camera, -5.0f * delta_time);
+                if (Input_Key_Pressed_Space) Camera_MoveVertically(&camera, 5.0f * delta_time);
+                if (Input_Key_Pressed_Shift) Camera_MoveVertically(&camera, -5.0f * delta_time);
 
                 Camera_Rotate(&camera, Input_MouseMotion_DeltaX * 2.0f * delta_time, -Input_MouseMotion_DeltaY * 2.0f * delta_time);
                 Input_MouseMotion_DeltaX = 0.0f;
@@ -648,8 +652,10 @@ int main(int, char**)
 
                 glm::vec3 pick_direction = glm::normalize(near_forward + relative_mouse_x * near_right + relative_mouse_y * near_up);
 
-                bool32_t shift_down = Input_Key_Pressed_S;
-                bool32_t shift_up = Input_Key_Pressed_W;
+                bool32_t face_shift_down = Input_Key_Pressed_S;
+                bool32_t face_shift_up = Input_Key_Pressed_W;
+                bool32_t vertex_shift_up = Input_Key_Pressed_A;
+                bool32_t vertex_shift_down = Input_Key_Pressed_D;
 
                 Scene_Face* hit_face;
                 if (Scene_RayCast_FindNearestIntersectingFace(&scene, camera.position, pick_direction, 0.01f, 100.0f, &hit_face, NULL))
@@ -663,12 +669,21 @@ int main(int, char**)
 
                     do
                     {
-                        if (shift_up) current_vertex->position.y += delta_time;
-                        if (shift_down) current_vertex->position.y -= delta_time;
+                        if (face_shift_up) current_vertex->position.y += delta_time;
+                        if (face_shift_down) current_vertex->position.y -= delta_time;
 
                         current_vertex = current_half_edge->end_vertex;
                         current_half_edge = current_half_edge->next_half_edge;
                     } while (current_vertex != start_vertex);
+                }
+
+                Scene_Vertex* hit_vertex;
+                if (Scene_RayCast_FindNearestVertex(&scene, camera.position, pick_direction, 100.0f, &hit_vertex))
+                {
+                    picked_vertex_id = hit_vertex->id;
+
+                    if (vertex_shift_up) hit_vertex->position.y += delta_time;
+                    if (vertex_shift_down) hit_vertex->position.y -= delta_time;
                 }
             }
         }
@@ -721,6 +736,7 @@ int main(int, char**)
 
         glUniformMatrix4fv(0, 1, GL_FALSE, (float*)&projection);
         glUniformMatrix4fv(1, 1, GL_FALSE, (float*)&camera.view);
+        glUniform1ui(2, picked_vertex_id);
 
         glDrawElementsInstancedBaseVertexBaseInstance(
             GL_TRIANGLES,

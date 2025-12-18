@@ -1,7 +1,5 @@
 #include "Scene.hpp"
 
-#include <glm/gtc/matrix_transform.hpp>
-
 Scene_Vertex* Scene_AddVertex(Scene* scene, glm::vec3 position)
 {
     if (scene->num_vertices >= SCENE_MAX_NUM_VERTICES)
@@ -224,5 +222,45 @@ bool32_t Scene_RayCast_FindNearestIntersectingFace(
     if (out_intersecting_face) *out_intersecting_face = hit_face;
     if (out_intersection) *out_intersection = hit_intersection;
 
+    return TRUE;
+}
+
+bool32_t Scene_RayCast_FindNearestVertex(
+    Scene*         scene,
+    glm::vec3      ray_origin,
+    glm::vec3      ray_direction,
+    float          max_distance,
+    Scene_Vertex** out_nearest_vertex
+)
+{
+    const float max_distance_squared = max_distance * max_distance;
+
+    float min_distance_squared = FLT_MAX;
+    Scene_Vertex* nearest_vertex = NULL;
+
+    for (uint32_t i = 0; i < scene->num_vertices; ++i)
+    {
+        Scene_Vertex* vertex = scene->vertices + i;
+
+        glm::vec3 p = vertex->position - ray_origin;
+        float p_length_squared = glm::dot(p, p);
+
+        if (p_length_squared > max_distance_squared)
+            continue;
+
+        float t = glm::dot(ray_direction, p);
+        float distance_squared = p_length_squared - t * t;
+
+        if (distance_squared < min_distance_squared)
+        {
+            min_distance_squared = distance_squared;
+            nearest_vertex = vertex;
+        }
+    }
+
+    if (!nearest_vertex)
+        return FALSE;
+
+    *out_nearest_vertex = nearest_vertex;
     return TRUE;
 }

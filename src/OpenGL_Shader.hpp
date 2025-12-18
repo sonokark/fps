@@ -129,15 +129,27 @@ layout (location = 0) in vec3 a_offset;
 layout (location = 0) uniform mat4 u_projection;
 layout (location = 1) uniform mat4 u_view;
 
+layout (location = 2) uniform uint u_selected_vertex_index;
+
 out vec4 v_color;
 
 void main()
 {
-	vec4 base_position = point_positions[gl_InstanceID];
+	uint vertex_index = gl_InstanceID;
+
+	vec4 base_position = point_positions[vertex_index];
 	vec4 translated_position = u_view * base_position;
 	vec4 position = translated_position + vec4(a_offset, 0.0);
 
-	v_color = vec4(0.0, 1.0, 1.0, 1.0);
+	if (vertex_index == u_selected_vertex_index)
+	{
+		v_color = vec4(0.0, 1.0, 1.0, 1.0);	
+	}
+	else
+	{
+		v_color = vec4(1.0, 0.0, 1.0, 1.0);	
+	}
+	
 	gl_Position = u_projection * position;
 }
 
