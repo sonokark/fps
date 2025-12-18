@@ -36,6 +36,10 @@ add_executable(
 	"src/Arena.cpp"
 	"src/Geometry.hpp"
     "src/Geometry.cpp"
+	"src/Scene.hpp"
+	"src/Scene.cpp"
+	"src/Camera.hpp"
+	"src/Camera.cpp"
 )
 
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)

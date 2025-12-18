@@ -5,6 +5,9 @@
 #include "OpenGL.hpp"
 #include "OpenGL_Shader.hpp"
 #include "Geometry.hpp"
+#include "Arena.hpp"
+#include "Scene.hpp"
+#include "Camera.hpp"
 
 #include <glm/common.hpp>
 #include <glm/vec2.hpp>
@@ -15,368 +18,355 @@
 
 #include <GLFW/glfw3.h>
 
-#define SCENE_MAX_NUM_VERTICES 512
-#define SCENE_MAX_NUM_HALF_EDGES 512
-#define SCENE_MAX_NUM_FACES 512
+#define EDITOR_GEOMETRY_PERMANENT_MAX_NUM_VERTICES 1024
+#define EDITOR_GEOMETRY_PERMANENT_MAX_NUM_INDICES 1024
 
-#define SCENE_VERTEX_MAX_NUM_OUTGOING_HALF_EDGES 16
-#define SCENE_VERTEX_MAX_NUM_INGOING_HALF_EDGES 16
+#define EDITOR_GEOMETRY_SCENE_MAX_NUM_VERTICES 1024
+#define EDITOR_GEOMETRY_SCENE_MAX_NUM_INDICES 1024
 
-#define SCENE_ID_NONE ((uint32_t)-1)
-
-struct SVertex
+struct Editor_Geometry_Permanent_VertexBufferLayout
 {
-    glm::vec3  position;
-    glm::vec3  normal;
-    glm::vec4  color;
-    glm::uvec3 cell_ids;
+    PVertex vertices[EDITOR_GEOMETRY_PERMANENT_MAX_NUM_VERTICES];
 };
 
-struct Scene_Vertex;
-struct Scene_HalfEdge;
-struct Scene_Face;
-
-struct Scene_Vertex
+struct Editor_Geometry_Permanent_IndexBufferLayout
 {
-    uint32_t id;
-
-    glm::vec3 position;
-
-    Scene_HalfEdge* outgoing_half_edges[SCENE_VERTEX_MAX_NUM_OUTGOING_HALF_EDGES];
-    uint32_t num_outgoing_half_edges;
-    
-    Scene_HalfEdge* ingoing_half_edges[SCENE_VERTEX_MAX_NUM_INGOING_HALF_EDGES];
-    uint32_t num_ingoing_half_edges;
+    uint32_t indices[EDITOR_GEOMETRY_PERMANENT_MAX_NUM_INDICES];
 };
 
-struct Scene_HalfEdge
+struct Editor_Geometry_Scene_VertexBufferLayout
 {
-    Scene_Vertex* origin_vertex;
-    Scene_Vertex* end_vertex;
-
-    Scene_HalfEdge* opposite_half_edge;
-    Scene_HalfEdge* next_half_edge;
-    Scene_HalfEdge* prev_half_edge;
-
-    Scene_Face* face;
+    SVertex vertices[EDITOR_GEOMETRY_SCENE_MAX_NUM_VERTICES];
 };
 
-struct Scene_Face
-{
-    uint32_t id;
-
-    glm::vec4 color;
-    glm::vec3 normal;
-    float offset;
-
-    Scene_HalfEdge* half_edge;
+struct Editor_Geometry_Scene_IndexBufferLayout
+{  
+    uint32_t indices[EDITOR_GEOMETRY_SCENE_MAX_NUM_INDICES];
 };
 
-struct Scene
+#define EDITOR_GEOMETRY_MAX_NUM_POINTS 128
+#define EDITOR_GEOMETRY_MAX_NUM_GRIDS 8
+
+struct Editor_Geometry_DataSSBOLayout
 {
-    Scene_Vertex vertices[SCENE_MAX_NUM_VERTICES];
+    alignas(sizeof(float) * 4) glm::vec4 point_positions[EDITOR_GEOMETRY_MAX_NUM_POINTS];
+
+    alignas(sizeof(float) * 4) glm::mat4 grid_transforms[EDITOR_GEOMETRY_MAX_NUM_GRIDS];
+    alignas(sizeof(float) * 4) glm::vec4 grid_colors[EDITOR_GEOMETRY_MAX_NUM_GRIDS];
+};
+
+struct Editor_Geometry_Permanent
+{
+    GLuint vao;
+    GLuint vbo;
+    GLuint ebo;
+
+    uint32_t grid_base_vertex;
+    uint32_t grid_indices_offset;
+    uint32_t grid_num_indices;
+
+    uint32_t point_base_vertex;
+    uint32_t point_indices_offset;
+    uint32_t point_num_indices;
+};
+
+struct Editor_Geometry_Scene
+{
+    GLuint vao;
+    GLuint vbo;
+    GLuint ebo;
+
     uint32_t num_vertices;
-
-    Scene_HalfEdge half_edges[SCENE_MAX_NUM_HALF_EDGES];
-    uint32_t num_half_edges;
-
-    Scene_Face faces[SCENE_MAX_NUM_FACES];
-    uint32_t num_faces;
+    uint32_t num_indices;
 };
 
-Scene_Vertex* Scene_AddVertex(Scene* scene, glm::vec3 position)
+struct Editor_Geometry
 {
-    if (scene->num_vertices >= SCENE_MAX_NUM_VERTICES)
-        return NULL;
+    Editor_Geometry_Permanent permanent_geometry;
+    Editor_Geometry_Scene scene_geometry;
 
-    uint32_t vertex_index = scene->num_vertices;
+    GLuint data_ssbo;
+    
+    uint32_t num_grids;
+    uint32_t num_points;
+};
 
-    Scene_Vertex* vertex = scene->vertices + vertex_index;
-    vertex->id                      = vertex_index;
-    vertex->position                = position;
-    vertex->num_outgoing_half_edges = 0;
-    vertex->num_ingoing_half_edges  = 0;
-
-    ++scene->num_vertices;
-    return vertex;
-}
-
-Scene_Face* Scene_ConstructFace(Scene* scene, Scene_Vertex** vertices, uint32_t num_vertices, glm::vec4 color)
+bool32_t Editor_Geometry_Permanent_Init(Editor_Geometry_Permanent* geometry)
 {
-    ASSERT(num_vertices >= 3);
+    constexpr uint32_t vertex_buffer_size = sizeof(Editor_Geometry_Permanent_VertexBufferLayout);
+    constexpr uint32_t index_buffer_size = sizeof(Editor_Geometry_Permanent_IndexBufferLayout);
 
-    if (scene->num_half_edges + num_vertices > SCENE_MAX_NUM_HALF_EDGES)
-        return NULL;
+    GLuint buffers[2];
+    glCreateBuffers(ARRAY_SIZE_U32(buffers), buffers);
 
-    if (scene->num_faces >= SCENE_MAX_NUM_FACES)
-        return NULL;
+    GLuint vbo = buffers[0];
+    GLuint ebo = buffers[1];
 
-    uint32_t half_edge_index_base = scene->num_half_edges;
+    glNamedBufferStorage(vbo, vertex_buffer_size, NULL, GL_MAP_WRITE_BIT);
+    glNamedBufferStorage(ebo, index_buffer_size, NULL, GL_MAP_WRITE_BIT);
 
-    Scene_Vertex* start_vertex = vertices[0];
-    Scene_Vertex* next_vertex  = vertices[1];
-    Scene_Vertex* prev_vertex  = vertices[num_vertices - 1];
-
-    glm::vec3 face_normal = glm::normalize(
-        glm::cross(
-            next_vertex->position - start_vertex->position,
-            prev_vertex->position - start_vertex->position
-        )
+    Editor_Geometry_Permanent_VertexBufferLayout* vertex_buffer_data = (Editor_Geometry_Permanent_VertexBufferLayout*)glMapNamedBuffer(
+        vbo, GL_WRITE_ONLY
     );
 
-    Scene_Face* face = scene->faces + scene->num_faces;
-    face->id         = scene->num_faces;
-    face->half_edge  = scene->half_edges + half_edge_index_base;
-    face->color      = color;
-    face->normal     = face_normal;
-    face->offset     = -glm::dot(face_normal, start_vertex->position);
+    ASSERT(vertex_buffer_data != NULL);
 
-    for (uint32_t i = 0; i < num_vertices; ++i)
+    Editor_Geometry_Permanent_IndexBufferLayout* index_buffer_data = (Editor_Geometry_Permanent_IndexBufferLayout*)glMapNamedBuffer(
+        ebo, GL_WRITE_ONLY
+    );
+
+    ASSERT(index_buffer_data != NULL);
+
+    // Push the geometry
     {
-        Scene_Vertex* v0 = vertices[i];
-        Scene_Vertex* v1 = vertices[(i + 1) % num_vertices];
+        uint32_t num_pushed_vertices = 0;
+        uint32_t num_pushed_indices = 0;
 
-        Scene_HalfEdge* current_half_edge = scene->half_edges + half_edge_index_base + i;
-        Scene_HalfEdge* prev_half_edge    = scene->half_edges + half_edge_index_base + (i + num_vertices - 1) % num_vertices;
-        Scene_HalfEdge* next_half_edge    = scene->half_edges + half_edge_index_base + (i + 1) % num_vertices;
-
-        current_half_edge->origin_vertex      = v0;
-        current_half_edge->end_vertex         = v1;
-        current_half_edge->opposite_half_edge = NULL;
-        current_half_edge->next_half_edge     = next_half_edge;
-        current_half_edge->prev_half_edge     = prev_half_edge;
-        current_half_edge->face               = face;
-
-        ASSERT(v0->num_outgoing_half_edges < SCENE_VERTEX_MAX_NUM_OUTGOING_HALF_EDGES);
-        ASSERT(v1->num_ingoing_half_edges < SCENE_VERTEX_MAX_NUM_INGOING_HALF_EDGES);
-
-        v0->outgoing_half_edges[v0->num_outgoing_half_edges++] = current_half_edge;
-        v1->ingoing_half_edges[v1->num_ingoing_half_edges++] = current_half_edge;
-
-        for (uint32_t j = 0; j < v1->num_outgoing_half_edges; ++j)
+        // Push the grid geometry
         {
-            Scene_HalfEdge* outgoing_half_edge = v1->outgoing_half_edges[j];
+            PVertex* const current_vertex = vertex_buffer_data->vertices + num_pushed_vertices;
+            uint32_t* const current_index = index_buffer_data->indices + num_pushed_indices;
 
-            if (outgoing_half_edge->end_vertex == v0)
-            {
-                current_half_edge->opposite_half_edge = outgoing_half_edge;
-                outgoing_half_edge->opposite_half_edge = current_half_edge;
+            const uint32_t num_remaining_vertices = EDITOR_GEOMETRY_PERMANENT_MAX_NUM_VERTICES - num_pushed_vertices;
+            const uint32_t num_remaining_indices = EDITOR_GEOMETRY_PERMANENT_MAX_NUM_INDICES - num_pushed_indices;
 
-                break;
-            }
+            constexpr glm::vec2  min  = { -10, -10 };
+            constexpr glm::vec2  max  = {  10,  10 };
+            constexpr glm::uvec2 axes = {   0,   2 };
+
+            Geometry_NumVerticesAndIndices nvi = Geometry_Grid_GetNumRequiredVerticesAndIndices(min, max);
+
+            bool32_t push_result = Geometry_Grid_Push(
+                current_vertex,
+                num_remaining_vertices,
+                current_index,
+                num_remaining_indices,
+                axes,
+                min,
+                max
+            );
+
+            ASSERT(push_result == TRUE);
+
+            geometry->grid_base_vertex = num_pushed_vertices;
+            geometry->grid_indices_offset = num_pushed_indices * sizeof(uint32_t);
+            geometry->grid_num_indices = nvi.num_indices;
+
+            num_pushed_vertices += nvi.num_vertices;
+            num_pushed_indices += nvi.num_indices;
+        }
+
+        // Push the point geometry
+        {
+            PVertex* const current_vertex = vertex_buffer_data->vertices + num_pushed_vertices;
+            uint32_t* const current_index = index_buffer_data->indices + num_pushed_indices;
+
+            const uint32_t num_remaining_vertices = EDITOR_GEOMETRY_PERMANENT_MAX_NUM_VERTICES - num_pushed_vertices;
+            const uint32_t num_remaining_indices = EDITOR_GEOMETRY_PERMANENT_MAX_NUM_INDICES - num_pushed_indices;
+
+            constexpr glm::vec2 size = { 0.1f, 0.1f };
+
+            Geometry_NumVerticesAndIndices nvi = Geometry_Point_GetNumRequiredVerticesAndIndices();
+
+            bool32_t push_result = Geometry_Point_Push(
+                current_vertex,
+                num_remaining_vertices,
+                current_index,
+                num_remaining_indices,
+                size
+            );
+
+            ASSERT(push_result == TRUE);
+
+            geometry->point_base_vertex = num_pushed_vertices;
+            geometry->point_indices_offset = num_pushed_indices * sizeof(uint32_t);
+            geometry->point_num_indices = nvi.num_indices;
+
+            num_pushed_vertices += nvi.num_vertices;
+            num_pushed_indices += nvi.num_indices;
         }
     }
 
-    scene->num_half_edges += num_vertices;
-    ++scene->num_faces;
+    GLboolean vertex_buffer_unmap_result = glUnmapNamedBuffer(vbo);
+    ASSERT(vertex_buffer_unmap_result == TRUE);
 
-    return face;
-}
+    GLboolean index_buffer_unmap_result = glUnmapNamedBuffer(ebo);
+    ASSERT(index_buffer_unmap_result == TRUE);
 
-bool32_t Scene_GenerateGeometry(
-    const Scene* scene,
-    SVertex*     vertices,
-    uint32_t     max_num_vertices,
-    uint32_t*    indices,
-    uint32_t     max_num_indices,
-    uint32_t*    out_num_vertices,
-    uint32_t*    out_num_indices
-)
-{
-    uint32_t vertex_index = 0;
-    uint32_t index_index = 0;
+    GLuint vao;
+    glCreateVertexArrays(1, &vao);
+    
+    glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(PVertex));
+    glVertexArrayElementBuffer(vao, ebo);
 
-    for (uint32_t i = 0; i < scene->num_faces; ++i)
-    {
-        uint32_t start_vertex_index = vertex_index;
+    glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(PVertex, position));
+    glEnableVertexArrayAttrib(vao, 0);
+    glVertexArrayAttribBinding(vao, 0, 0);
 
-        const Scene_Face* current_face = scene->faces + i;
-
-        const Scene_HalfEdge* current_half_edge = current_face->half_edge;
-        const Scene_Vertex*   current_vertex    = current_half_edge->origin_vertex;
-
-        const Scene_Vertex* start_vertex = current_vertex;
-
-        do
-        {
-            ASSERT(vertex_index < max_num_vertices);
-
-            SVertex* geometry_vertex = vertices + vertex_index;
-            geometry_vertex->position   = current_vertex->position;
-            geometry_vertex->normal     = current_face->normal;
-            geometry_vertex->color      = current_face->color;
-            geometry_vertex->cell_ids.x = current_vertex->id;
-            geometry_vertex->cell_ids.z = current_face->id;
-
-            ++vertex_index;
-
-            current_vertex = current_half_edge->end_vertex;
-            current_half_edge = current_half_edge->next_half_edge;
-        }
-        while (current_vertex != start_vertex);
-
-        uint32_t v0i = start_vertex_index;
-        uint32_t v1i = start_vertex_index + 1;
-
-        for (uint32_t vi = start_vertex_index + 2; vi < vertex_index; ++vi)
-        {
-            ASSERT(index_index < max_num_indices);
-
-            indices[index_index++] = v0i;
-            indices[index_index++] = v1i;
-            indices[index_index++] = vi;
-
-            v1i = vi;
-        }
-    }
-
-    *out_num_vertices = vertex_index;
-    *out_num_indices = index_index;
+    geometry->vao = vao;
+    geometry->vbo = vbo;
+    geometry->ebo = ebo;
 
     return TRUE;
 }
 
-// NOTE: ray_direction must be a unit vector
-bool32_t Scene_RayCast_FindNearestIntersectingFace(
-    Scene*       scene,
-    glm::vec3    ray_origin,
-    glm::vec3    ray_direction,
-    float        ray_min_length,
-    float        ray_max_length,
-    Scene_Face** out_intersecting_face,
-    glm::vec3*   out_intersection
-)
+bool32_t Editor_Geometry_Scene_Init(Editor_Geometry_Scene* geometry)
 {
-    const float eps = 10e-5f;
+    constexpr uint32_t vertex_buffer_size = sizeof(Editor_Geometry_Scene_VertexBufferLayout);
+    constexpr uint32_t index_buffer_size = sizeof(Editor_Geometry_Scene_IndexBufferLayout);
 
-    float       hit_min_distance = FLT_MAX;
-    Scene_Face* hit_face         = NULL;
-    glm::vec3   hit_intersection = {};
+    GLuint buffers[2];
+    glCreateBuffers(ARRAY_SIZE_U32(buffers), buffers);
 
-    for (uint32_t i = 0; i < scene->num_faces; ++i)
-    {
-        Scene_Face* current_face = scene->faces + i;
+    GLuint vbo = buffers[0];
+    GLuint ebo = buffers[1];
 
-        float denom = glm::dot(current_face->normal, ray_direction);
-
-        if (denom > -eps && denom < eps)
-            continue;
-
-        float t = -(current_face->offset + glm::dot(current_face->normal, ray_origin)) / denom;
-        if (t < ray_min_length || t > ray_max_length)
-            continue;
-
-        if (t < hit_min_distance)
-        {
-            glm::vec3 intersection = ray_origin + t * ray_direction;
-
-            Scene_HalfEdge* current_half_edge = current_face->half_edge;
-            Scene_Vertex*   current_vertex    = current_half_edge->origin_vertex;
-
-            Scene_Vertex* start_vertex = current_vertex;
-
-            do
-            {
-                Scene_Vertex* next_vertex = current_half_edge->end_vertex;
-
-                glm::vec3 w = glm::cross(
-                    next_vertex->position - current_vertex->position,
-                    intersection - current_vertex->position
-                );
-
-                if (glm::dot(w, current_face->normal) < 0.0f)
-                    goto fail;
-
-                current_vertex = next_vertex;
-                current_half_edge = current_half_edge->next_half_edge;
-            }
-            while (current_vertex != start_vertex);
-
-            hit_min_distance = t;
-            hit_face = current_face;
-            hit_intersection = intersection;
-        }
-
-    fail:
-        continue;
-    }
-
-    if (!hit_face)
-        return FALSE;
-
-    if (out_intersecting_face) *out_intersecting_face = hit_face;
-    if (out_intersection) *out_intersection = hit_intersection;
-
-    return TRUE;
-}
-
-struct Camera
-{
-    glm::vec3 position;
-    float yaw;
-    float pitch;
-
-    glm::vec3 right;
-    glm::vec3 forward;
-    glm::vec3 up;
-
-    glm::mat4 view;
-};
-
-void Camera_MoveStraight(Camera* camera, float distance)
-{
-    camera->position += distance * camera->forward;
-}
-
-void Camera_Strafe(Camera* camera, float distance)
-{
-    camera->position += distance * camera->right;
-}
-
-void Camera_Rotate(Camera* camera, float delta_yaw, float delta_pitch)
-{
-    constexpr float max_pitch = glm::radians(89.0f);
-    constexpr float min_pitch = -glm::radians(89.0f);
-
-    camera->yaw += delta_yaw;
-
-    camera->pitch += delta_pitch;
-
-    if (camera->pitch > max_pitch)
-        camera->pitch = max_pitch;
-
-    if (camera->pitch < min_pitch)
-        camera->pitch = min_pitch;
-}
-
-void Camera_RecomputeDirectionVectors(Camera* camera)
-{
-    camera->forward.x = cosf(camera->yaw) * cosf(camera->pitch);
-    camera->forward.y = sinf(camera->pitch);
-    camera->forward.z = sinf(camera->yaw) * cosf(camera->pitch);
-
-    camera->right.x = -sinf(camera->yaw);
-    camera->right.y = 0.0f;
-    camera->right.z = cosf(camera->yaw);
-
-    camera->up = glm::cross(camera->right, camera->forward);
-}
-
-void Camera_RecomputeViewMatrix(Camera* camera)
-{
-    camera->view = glm::lookAt(camera->position, camera->position + camera->forward, camera->up);
-}
+    glNamedBufferStorage(vbo, vertex_buffer_size, NULL, GL_MAP_WRITE_BIT);
+    glNamedBufferStorage(ebo, index_buffer_size, NULL, GL_MAP_WRITE_BIT);
 
 #if 0
-struct DrawElementsIndirectCommand
-{
-    GLuint count;
-    GLuint instance_count;
-    GLuint first_index;
-    GLint  base_vertex;
-    GLuint base_instance;
-};
+    GLuint vao;
+    glCreateVertexArrays(1, &vao);
+    glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(LVertex));
+    glVertexArrayElementBuffer(vao, ebo);
+
+    glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(LVertex, position));
+    glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(LVertex, normal));
+    glVertexArrayAttribFormat(vao, 2, 4, GL_FLOAT, GL_FALSE, offsetof(LVertex, color));
+
+    // NOTE: The following call apparently does not work correctly on some Intel iGPUs (I've been testing the code on one such iGPU)
+    // See: https://community.intel.com/t5/Graphics/glVertexArrayAttribIFormat-not-working-correctly-on-Intel-HD/td-p/1687827
+    glVertexArrayAttribIFormat(vao, 3, 3, GL_UNSIGNED_INT, offsetof(LVertex, cell_ids));
+
+    glEnableVertexArrayAttrib(vao, 0);
+    glEnableVertexArrayAttrib(vao, 1);
+    glEnableVertexArrayAttrib(vao, 2);
+    glEnableVertexArrayAttrib(vao, 3);
+
+    glVertexArrayAttribBinding(vao, 0, 0);
+    glVertexArrayAttribBinding(vao, 1, 0);
+    glVertexArrayAttribBinding(vao, 2, 0);
+    glVertexArrayAttribBinding(vao, 3, 0);
+#else
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, position));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, normal));
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, color));
+    glVertexAttribIPointer(3, 3, GL_UNSIGNED_INT, sizeof(SVertex), (const void*)offsetof(SVertex, cell_ids));
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+    glEnableVertexAttribArray(3);
 #endif
+
+    geometry->vao = vao;
+    geometry->vbo = vbo;
+    geometry->ebo = ebo;
+    geometry->num_indices = 0;
+
+    return TRUE;
+}
+
+bool32_t Editor_Geometry_Init(Editor_Geometry* geometry)
+{
+    bool32_t init_permanent_geometry_result = Editor_Geometry_Permanent_Init(&geometry->permanent_geometry);
+    ASSERT(init_permanent_geometry_result == TRUE);
+
+    bool32_t init_scene_geometry_result = Editor_Geometry_Scene_Init(&geometry->scene_geometry);
+    ASSERT(init_scene_geometry_result == TRUE);
+
+    GLuint data_ssbo;
+    glCreateBuffers(1, &data_ssbo);
+    glNamedBufferStorage(data_ssbo, sizeof(Editor_Geometry_DataSSBOLayout), NULL, GL_MAP_WRITE_BIT);
+
+    // Fill the SSBO with some initial data
+    {
+        Editor_Geometry_DataSSBOLayout* data = (Editor_Geometry_DataSSBOLayout*)glMapNamedBuffer(data_ssbo, GL_WRITE_ONLY);
+        ASSERT(data != NULL);
+
+        data->grid_transforms[0] = glm::mat4(1.0f);
+        data->grid_colors[0] = { 0.2f, 0.2f, 0.2f, 1.0f };
+
+        GLboolean unmap_result = glUnmapNamedBuffer(data_ssbo);
+        ASSERT(unmap_result == GL_TRUE);
+
+        geometry->num_grids = 1;
+        geometry->num_points = 0;
+    }
+
+    geometry->data_ssbo = data_ssbo;
+    
+    return TRUE;
+}
+
+bool32_t Editor_Geometry_Update(Editor_Geometry* geometry, const Scene* scene)
+{
+    // Update the scene geometry first
+    {
+        Editor_Geometry_Scene_VertexBufferLayout* vertex_buffer_data = (Editor_Geometry_Scene_VertexBufferLayout*)glMapNamedBuffer(
+            geometry->scene_geometry.vbo,
+            GL_WRITE_ONLY
+        );
+
+        ASSERT(vertex_buffer_data != NULL);
+
+        Editor_Geometry_Scene_IndexBufferLayout* index_buffer_data = (Editor_Geometry_Scene_IndexBufferLayout*)glMapNamedBuffer(
+            geometry->scene_geometry.ebo,
+            GL_WRITE_ONLY
+        );
+
+        ASSERT(index_buffer_data != NULL);
+
+        uint32_t num_vertices, num_indices;
+        bool32_t generate_geometry_result = Scene_GenerateGeometry(
+            scene,
+            vertex_buffer_data->vertices,
+            EDITOR_GEOMETRY_SCENE_MAX_NUM_VERTICES,
+            index_buffer_data->indices,
+            EDITOR_GEOMETRY_SCENE_MAX_NUM_INDICES,
+            &num_vertices,
+            &num_indices
+        );
+        
+        ASSERT(generate_geometry_result == TRUE);
+
+        bool32_t unmap_vbo_result = glUnmapNamedBuffer(geometry->scene_geometry.vbo);
+        ASSERT(unmap_vbo_result == TRUE);
+
+        bool32_t unmap_ebo_result = glUnmapNamedBuffer(geometry->scene_geometry.ebo);
+        ASSERT(unmap_ebo_result == TRUE);
+
+        geometry->scene_geometry.num_vertices = num_vertices;
+        geometry->scene_geometry.num_indices = num_indices;
+    }
+
+    // Set the SSBO data
+    {
+        Editor_Geometry_DataSSBOLayout* data = (Editor_Geometry_DataSSBOLayout*)glMapNamedBuffer(geometry->data_ssbo, GL_WRITE_ONLY);
+        ASSERT(data != NULL);
+
+        for (uint32_t i = 0; i < scene->num_vertices; ++i)
+        {
+            const Scene_Vertex* vertex = scene->vertices + i;
+
+            data->point_positions[i] = glm::vec4(vertex->position, 1.0f);
+        }
+
+        geometry->num_points = scene->num_vertices;
+
+        GLboolean unmap_result = glUnmapNamedBuffer(geometry->data_ssbo);
+        ASSERT(unmap_result == GL_TRUE);
+    }
+
+    return TRUE;
+}
 
 static bool32_t Input_Cursor_Locked = TRUE;
 
@@ -531,131 +521,68 @@ int main(int, char**)
         }
     }
 
-    GLuint default_program;
+    GLuint program_scene = OpenGL_Shader_CreateProgramFromSources(OpenGL_Shader_Scene_VertexSource, OpenGL_Shader_Scene_FragmentSource);
+    
+    GLuint program_editor_geometry;
+    GLuint program_editor_point;
     {
-        GLuint shaders[2];
+        GLuint shaders[3];
 
-        shaders[0] = OpenGL_Shader_CreateShader(GL_VERTEX_SHADER, OpenGL_Shader_DefaultVertexSource);
+        shaders[0] = OpenGL_Shader_CreateShader(GL_VERTEX_SHADER, OpenGL_Shader_Editor_Geometry_VertexSource);
         ASSERT(shaders[0] != 0);
 
-        shaders[1] = OpenGL_Shader_CreateShader(GL_FRAGMENT_SHADER, OpenGL_Shader_DefaultFragmentSource);
+        shaders[1] = OpenGL_Shader_CreateShader(GL_FRAGMENT_SHADER, OpenGL_Shader_Editor_Geometry_FragmentSource);
         ASSERT(shaders[1] != 0);
 
-        default_program = OpenGL_Shader_CreateProgram(shaders, 2);
-        ASSERT(default_program != 0);
+        shaders[2] = OpenGL_Shader_CreateShader(GL_VERTEX_SHADER, OpenGL_Shader_Editor_Point_VertexSource);
+        ASSERT(shaders[2] != 0);
+
+        program_editor_geometry = OpenGL_Shader_CreateProgram(shaders, 2);
+        ASSERT(program_editor_geometry != 0);
+
+        program_editor_point = OpenGL_Shader_CreateProgram(shaders + 1, 2);
+        ASSERT(program_editor_point != 0);
 
         glDeleteShader(shaders[0]);
         glDeleteShader(shaders[1]);
+        glDeleteShader(shaders[2]);
     }
 
-    glUseProgram(default_program);
-
-    Scene_Vertex* scene_vertices[6];
-
     Scene scene = {};
-    scene_vertices[0] = Scene_AddVertex(&scene, { -3.0f, -3.0f, 0.0f });
-    ASSERT(scene_vertices[0] != NULL);
-    
-    scene_vertices[1] = Scene_AddVertex(&scene, { 3.0f, -3.0f, 0.0f });
-    ASSERT(scene_vertices[1] != NULL);
+    {
+        Scene_Vertex* scene_vertices[6];
 
-    scene_vertices[2] = Scene_AddVertex(&scene, { 3.0f,  3.0f, 0.0f });
-    ASSERT(scene_vertices[2] != NULL);
-    
-    scene_vertices[3] = Scene_AddVertex(&scene, { -3.0f,  3.0f, 0.0f });
-    ASSERT(scene_vertices[3] != NULL);
+        scene_vertices[0] = Scene_AddVertex(&scene, { -3.0f, 0.0f, 0.0f });
+        ASSERT(scene_vertices[0] != NULL);
 
-    scene_vertices[4] = Scene_AddVertex(&scene, {  6.0f, -3.0f, 0.0f });
-    ASSERT(scene_vertices[4] != NULL);
+        scene_vertices[1] = Scene_AddVertex(&scene, { 3.0f, 0.0f, 0.0f });
+        ASSERT(scene_vertices[1] != NULL);
 
-    scene_vertices[5] = Scene_AddVertex(&scene, {  6.0f,  3.0f, 0.0f });
-    ASSERT(scene_vertices[5] != NULL);
+        scene_vertices[2] = Scene_AddVertex(&scene, { 3.0f, 1.0f, 0.0f });
+        ASSERT(scene_vertices[2] != NULL);
 
-    Scene_Vertex* f0v[4] = { scene_vertices[0], scene_vertices[1] ,scene_vertices[2], scene_vertices[3] };
-    Scene_Vertex* f1v[4] = { scene_vertices[1], scene_vertices[4], scene_vertices[5], scene_vertices[2] };
+        scene_vertices[3] = Scene_AddVertex(&scene, { -3.0f, 1.0f, 0.0f });
+        ASSERT(scene_vertices[3] != NULL);
 
-    Scene_Face* f0 = Scene_ConstructFace(&scene, f0v, ARRAY_SIZE_U32(f0v), { 1.0f, 0.0f, 0.0f, 1.0f });
-    ASSERT(f0 != NULL);
-    
-    Scene_Face* f1 = Scene_ConstructFace(&scene, f1v, ARRAY_SIZE_U32(f1v), { 0.0f, 1.0f, 0.0f, 1.0f });
-    ASSERT(f1 != NULL);
+        scene_vertices[4] = Scene_AddVertex(&scene, { 6.0f, 0.0f, 0.0f });
+        ASSERT(scene_vertices[4] != NULL);
 
-    uint32_t max_num_vertices = 1024;
-    uint32_t max_num_indices = 1024;
+        scene_vertices[5] = Scene_AddVertex(&scene, { 6.0f, 1.0f, 0.0f });
+        ASSERT(scene_vertices[5] != NULL);
 
-    GLuint vbo, ebo;
-    glCreateBuffers(1, &vbo);
-    glCreateBuffers(1, &ebo);
+        Scene_Vertex* f0v[4] = { scene_vertices[0], scene_vertices[1] ,scene_vertices[2], scene_vertices[3] };
+        Scene_Vertex* f1v[4] = { scene_vertices[1], scene_vertices[4], scene_vertices[5], scene_vertices[2] };
 
-    glNamedBufferStorage(vbo, sizeof(SVertex) * max_num_vertices, NULL, GL_MAP_WRITE_BIT);
-    glNamedBufferStorage(ebo, sizeof(uint32_t) * max_num_indices, NULL, GL_MAP_WRITE_BIT);
+        Scene_Face* f0 = Scene_ConstructFace(&scene, f0v, ARRAY_SIZE_U32(f0v), { 1.0f, 0.0f, 0.0f, 1.0f });
+        ASSERT(f0 != NULL);
 
-#if 0
-    GLuint vao;
-    glCreateVertexArrays(1, &vao);
-    glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(LVertex));
-    glVertexArrayElementBuffer(vao, ebo);
+        Scene_Face* f1 = Scene_ConstructFace(&scene, f1v, ARRAY_SIZE_U32(f1v), { 0.0f, 1.0f, 0.0f, 1.0f });
+        ASSERT(f1 != NULL);
+    }
 
-    glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(LVertex, position));
-    glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(LVertex, normal));
-    glVertexArrayAttribFormat(vao, 2, 4, GL_FLOAT, GL_FALSE, offsetof(LVertex, color));
-
-    // NOTE: The following call apparently does not work correctly on some Intel iGPUs (I've been testing the code on one such iGPU)
-    // See: https://community.intel.com/t5/Graphics/glVertexArrayAttribIFormat-not-working-correctly-on-Intel-HD/td-p/1687827
-    glVertexArrayAttribIFormat(vao, 3, 3, GL_UNSIGNED_INT, offsetof(LVertex, cell_ids));
-
-    glEnableVertexArrayAttrib(vao, 0);
-    glEnableVertexArrayAttrib(vao, 1);
-    glEnableVertexArrayAttrib(vao, 2);
-    glEnableVertexArrayAttrib(vao, 3);
-
-    glVertexArrayAttribBinding(vao, 0, 0);
-    glVertexArrayAttribBinding(vao, 1, 0);
-    glVertexArrayAttribBinding(vao, 2, 0);
-    glVertexArrayAttribBinding(vao, 3, 0);
-#else
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, position));
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, normal));
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(SVertex), (const void*)offsetof(SVertex, color));
-    glVertexAttribIPointer(3, 3, GL_UNSIGNED_INT, sizeof(SVertex), (const void*)offsetof(SVertex, cell_ids));
-    
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
-    glEnableVertexAttribArray(3);
-#endif
-
-#if 0
-    uint32_t max_num_draw_commands = 1024;
-
-    GLuint draw_indirect_buffer_object;
-    glCreateBuffers(1, &draw_indirect_buffer_object);
-    glNamedBufferStorage(draw_indirect_buffer_object, sizeof(DrawElementsIndirectCommand) * max_num_draw_commands, NULL, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-
-    DrawElementsIndirectCommand* draw_commands = (DrawElementsIndirectCommand*)glMapNamedBufferRange(
-        draw_indirect_buffer_object,
-        0,
-        sizeof(DrawElementsIndirectCommand) * max_num_draw_commands,
-        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT
-    );
-
-    draw_commands[0].count = num_indices;
-    draw_commands[0].instance_count = 1;
-    draw_commands[0].first_index = 0;
-    draw_commands[0].base_vertex = 0;
-    draw_commands[0].base_instance = 0;
-
-    glFlushMappedNamedBufferRange(draw_indirect_buffer_object, 0, sizeof(DrawElementsIndirectCommand) * max_num_draw_commands);
-
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, draw_indirect_buffer_object);
-#endif
+    Editor_Geometry editor_geometry;
+    bool32_t editor_geometry_init_result = Editor_Geometry_Init(&editor_geometry);
+    ASSERT(editor_geometry_init_result == TRUE);
 
     constexpr float fovy = glm::radians(45.0f);
     constexpr float near = 0.1f;
@@ -668,14 +595,6 @@ int main(int, char**)
     glm::mat4 identity(1.0f);
     glm::mat4 projection = glm::perspective(fovy, aspect, near, 100.0f);
 
-    glUniformMatrix4fv(0, 1, GL_FALSE, (float*)&projection);
-
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-    glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
-
     Camera camera;
     camera.position = { 0.0f, 0.0f, 5.0f };
     camera.pitch = 0.0f;
@@ -683,6 +602,14 @@ int main(int, char**)
 
     Camera_RecomputeDirectionVectors(&camera);
     Camera_RecomputeViewMatrix(&camera);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, editor_geometry.data_ssbo);
+
+    glEnable(GL_DEPTH_TEST);
+    // glEnable(GL_CULL_FACE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
 
     float last_time = 0.0f;
 
@@ -716,8 +643,8 @@ int main(int, char**)
                 float relative_mouse_y = 2.0f * (0.5f - (Input_MouseMotion_LastY / window_height));
 
                 glm::vec3 near_forward = near * camera.forward;
-                glm::vec3 near_right = camera.right * near_half_width;
-                glm::vec3 near_up = camera.up * near_half_height;
+                glm::vec3 near_right = near_half_width * camera.right;
+                glm::vec3 near_up = near_half_height * camera.up;
 
                 glm::vec3 pick_direction = glm::normalize(near_forward + relative_mouse_x * near_right + relative_mouse_y * near_up);
 
@@ -748,31 +675,62 @@ int main(int, char**)
 
         last_time = current_time;
 
-        // Regenerate the scene geometry
+        // Update the editor geometry
 
-        SVertex* vertices = (SVertex*)glMapNamedBuffer(vbo, GL_WRITE_ONLY);
-        uint32_t* indices = (uint32_t*)glMapNamedBuffer(ebo, GL_WRITE_ONLY);
-
-        uint32_t num_vertices, num_indices;
-        bool32_t generate_geometry_result = Scene_GenerateGeometry(&scene, vertices, max_num_vertices, indices, max_num_indices, &num_vertices, &num_indices);
-        ASSERT(generate_geometry_result == TRUE);
-
-        bool32_t unmap_vbo_result = glUnmapNamedBuffer(vbo);
-        ASSERT(unmap_vbo_result == TRUE);
-
-        bool32_t unmap_ebo_result = glUnmapNamedBuffer(ebo);
-        ASSERT(unmap_ebo_result == TRUE);
+        bool32_t editor_geometry_update_result = Editor_Geometry_Update(&editor_geometry, &scene);
+        ASSERT(editor_geometry_update_result == TRUE);
 
         // Setup for rendering
 
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Scene
+     
+        glUseProgram(program_scene);
+
+        glUniformMatrix4fv(0, 1, GL_FALSE, (float*)&projection);
         glUniformMatrix4fv(1, 1, GL_FALSE, (float*)&camera.view);
         glUniformMatrix4fv(2, 1, GL_FALSE, (float*)&identity);
         glUniform1ui(3, picked_face_id);
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, (const void*)0);
+        glBindVertexArray(editor_geometry.scene_geometry.vao);
+        glDrawElements(GL_TRIANGLES, editor_geometry.scene_geometry.num_indices, GL_UNSIGNED_INT, (const void*)0);
+        
+        // Grid
+
+        glUseProgram(program_editor_geometry);
+
+        glUniformMatrix4fv(0, 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(1, 1, GL_FALSE, (float*)&camera.view);
+
+        glBindVertexArray(editor_geometry.permanent_geometry.vao);
+
+        glDrawElementsInstancedBaseVertexBaseInstance(
+            GL_LINES,
+            editor_geometry.permanent_geometry.grid_num_indices,
+            GL_UNSIGNED_INT,
+            (const void*)editor_geometry.permanent_geometry.grid_indices_offset,
+            editor_geometry.num_grids,
+            editor_geometry.permanent_geometry.grid_base_vertex,
+            0
+        );
+
+        // Points
+
+        glUseProgram(program_editor_point);
+
+        glUniformMatrix4fv(0, 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(1, 1, GL_FALSE, (float*)&camera.view);
+
+        glDrawElementsInstancedBaseVertexBaseInstance(
+            GL_TRIANGLES,
+            editor_geometry.permanent_geometry.point_num_indices,
+            GL_UNSIGNED_INT,
+            (const void*)editor_geometry.permanent_geometry.point_indices_offset,
+            editor_geometry.num_points,
+            editor_geometry.permanent_geometry.point_base_vertex,
+            0
+        );
 
         glfwSwapBuffers(window);
         glfwPollEvents();

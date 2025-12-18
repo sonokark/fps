@@ -92,6 +92,8 @@ typedef void (APIENTRYP GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
 #define GL_FILL 0x1B02
 #define GL_DRAW_INDIRECT_BUFFER 0x8F3F
 #define GL_INT 0x1404
+#define GL_LINES 0x0001
+#define GL_SHADER_STORAGE_BUFFER 0x90D2
 
 typedef const GLubyte* (APIENTRYP PFN_glGetString)(GLenum name);
 typedef const GLubyte* (APIENTRYP PFN_glGetStringi)(GLenum name, GLuint index);
@@ -147,6 +149,11 @@ typedef void (APIENTRYP PFN_glVertexArrayAttribIFormat)(GLuint vaobj, GLuint att
 typedef void (APIENTRYP PFN_glUniform1ui)(GLint location, GLuint v0);
 typedef GLint(APIENTRYP PFN_glGetAttribLocation)(GLuint program, const GLchar* name);
 typedef void (APIENTRYP PFN_glVertexAttribIPointer)(GLuint index, GLint size, GLenum type, GLsizei stride, const void* pointer);
+typedef void (APIENTRYP PFN_glDrawElementsBaseVertex)(GLenum mode, GLsizei count, GLenum type, const void* indices, GLint basevertex);
+typedef void (APIENTRYP PFN_glUniform3fv)(GLint location, GLsizei count, const GLfloat* value);
+typedef void (APIENTRYP PFN_glUniform1f)(GLint location, GLfloat v0);
+typedef void (APIENTRYP PFN_glBindBufferBase)(GLenum target, GLuint index, GLuint buffer);
+typedef void (APIENTRYP PFN_glDrawElementsInstancedBaseVertexBaseInstance)(GLenum mode, GLsizei count, GLenum type, const void* indices, GLsizei instancecount, GLint basevertex, GLuint baseinstance);
 
 extern PFN_glGetString glGetString;
 extern PFN_glGetStringi glGetStringi;
@@ -202,6 +209,11 @@ extern PFN_glVertexArrayAttribIFormat glVertexArrayAttribIFormat;
 extern PFN_glUniform1ui glUniform1ui;
 extern PFN_glGetAttribLocation glGetAttribLocation;
 extern PFN_glVertexAttribIPointer glVertexAttribIPointer;
+extern PFN_glDrawElementsBaseVertex glDrawElementsBaseVertex;
+extern PFN_glUniform3fv glUniform3fv;
+extern PFN_glUniform1f glUniform1f;
+extern PFN_glBindBufferBase glBindBufferBase;
+extern PFN_glDrawElementsInstancedBaseVertexBaseInstance glDrawElementsInstancedBaseVertexBaseInstance;
 
 bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address);
 

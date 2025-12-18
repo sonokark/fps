@@ -58,6 +58,11 @@ PFN_glVertexArrayAttribIFormat glVertexArrayAttribIFormat;
 PFN_glUniform1ui glUniform1ui;
 PFN_glGetAttribLocation glGetAttribLocation;
 PFN_glVertexAttribIPointer glVertexAttribIPointer;
+PFN_glDrawElementsBaseVertex glDrawElementsBaseVertex;
+PFN_glUniform3fv glUniform3fv;
+PFN_glUniform1f glUniform1f;
+PFN_glBindBufferBase glBindBufferBase;
+PFN_glDrawElementsInstancedBaseVertexBaseInstance glDrawElementsInstancedBaseVertexBaseInstance;
 
 #define OPENGL_LOAD_FUNCTION(get_proc_address, name) \
 {                                                    \
@@ -121,6 +126,11 @@ bool32_t OpenGL_LoadFunctions(OpenGL_PFN_GetProcAddress get_opengl_proc_address)
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUniform1ui);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glGetAttribLocation);
     OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glVertexAttribIPointer);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDrawElementsBaseVertex);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUniform3fv);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glUniform1f);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glBindBufferBase);
+    OPENGL_LOAD_FUNCTION(get_opengl_proc_address, glDrawElementsInstancedBaseVertexBaseInstance);
 
     return TRUE;
 }

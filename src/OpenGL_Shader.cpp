@@ -34,3 +34,22 @@ GLuint OpenGL_Shader_CreateProgram(const GLuint* shaders, uint32_t num_shaders)
 
 	return program;
 }
+
+GLuint OpenGL_Shader_CreateProgramFromSources(const char* vertex_source, const char* fragment_source)
+{
+	GLuint shaders[2];
+
+	shaders[0] = OpenGL_Shader_CreateShader(GL_VERTEX_SHADER, vertex_source);
+	ASSERT(shaders[0] != 0);
+
+	shaders[1] = OpenGL_Shader_CreateShader(GL_FRAGMENT_SHADER, fragment_source);
+	ASSERT(shaders[1] != 0);
+
+	GLuint program = OpenGL_Shader_CreateProgram(shaders, 2);
+	ASSERT(program != 0);
+
+	glDeleteShader(shaders[0]);
+	glDeleteShader(shaders[1]);
+
+	return program;
+}
